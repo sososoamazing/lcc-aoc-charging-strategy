@@ -1,0 +1,5 @@
+# Preserve bytes exactly so SHA256SUMS matches raw downloads and clones.
+* -text
+*.png binary
+*.jpg binary
+*.jpeg binary

@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02 公式、符号与适用域 · 三相 LCC 电容充电电源 AOC 策略资料包</title>
+<meta name="description" content="50 V → 800 V 三相 Δ/Y LCC 的 AOC 策略梳理：Qin 2023 文献精读、最终 59 节点离线 fs(Vo) 轨迹、20 点验证、模型层级与论文写作边界。">
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="alternate" type="text/markdown" href="../ONE_PAGE.md">
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$','$'],['\(','\)']], displayMath: [['$$','$$'],['\[','\]']] },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner">
+  <a class="brand" href="../index.html">LCC<span>·</span>AOC</a>
+  <nav class="nav">
+    <a href="../index.html">总览</a>
+    <a href="../docs/01_paper_AOC_digest.html">文献</a>
+    <a href="../docs/03_project_AOC_final.html">最终轨迹</a>
+    <a href="../docs/04_validation.html">验证</a>
+    <a href="../docs/05_claims_and_boundaries.html">边界</a>
+    <a href="../docs/06_writing_guide.html">写作</a>
+    <a href="../docs/07_sources.html">来源</a>
+    <a href="../data/aoc_59_nodes.csv">数据</a>
+    <a href="https://github.com/sososoamazing/lcc-aoc-charging-strategy">GitHub</a>
+  </nav>
+</div></header>
+
+<main class="layout">
+<aside class="toc"><h3>本页目录</h3><a class="lvl2" href="#1-符号表">1 符号表</a><a class="lvl3" href="#1-1-文献层">1.1 文献层</a><a class="lvl3" href="#1-2-项目层">1.2 项目层</a><a class="lvl2" href="#2-文献公式-qin-2023">2 文献公式（Qin 2023）</a><a class="lvl3" href="#2-1-归一化与谐振">2.1 归一化与谐振</a><a class="lvl3" href="#2-2-连续谐振电流假设">2.2 连续谐振电流假设</a><a class="lvl3" href="#2-3-输出电流与峰值电流">2.3 输出电流与峰值电流</a><a class="lvl3" href="#2-4-导通角拟合">2.4 导通角拟合</a><a class="lvl3" href="#2-5-电流应力边界">2.5 电流应力边界</a><a class="lvl3" href="#2-6-zvs-边界">2.6 ZVS 边界</a><a class="lvl3" href="#2-7-频率范围">2.7 频率范围</a><a class="lvl3" href="#2-8-频率下界合成">2.8 频率下界合成</a><a class="lvl3" href="#2-9-参考电流">2.9 参考电流</a><a class="lvl2" href="#3-项目公式-最终-59-节点轨迹">3 项目公式（最终 59 节点轨迹）</a><a class="lvl3" href="#3-1-逐点优化">3.1 逐点优化</a><a class="lvl3" href="#3-2-可行集合">3.2 可行集合</a><a class="lvl3" href="#3-3-换流电荷代理">3.3 换流电荷代理</a><a class="lvl3" href="#3-4-准静态充电时间">3.4 准静态充电时间</a><a class="lvl3" href="#3-5-分段常值频率与连续相位">3.5 分段常值频率与连续相位</a><a class="lvl3" href="#3-6-停充锁存">3.6 停充锁存</a><a class="lvl3" href="#3-7-理想开关动态的数值设置">3.7 理想开关动态的数值设置</a><a class="lvl2" href="#4-文献公式与项目公式的对应">4 文献公式与项目公式的对应</a><a class="lvl2" href="#5-常见公式错误">5 常见公式错误</a><a class="lvl2" href="#6-可直接粘贴的-latex">6 可直接粘贴的 LaTeX</a></aside>
+<article class="content">
+<h1 id="02-公式-符号与适用域">02 公式、符号与适用域</h1>
+<blockquote>用途：写论文时直接取用公式与符号；同时标明哪些是<strong>文献公式</strong>、哪些是<strong>本项目定义</strong>、哪些<strong>不能移植</strong>。公式编号：<code>(Q-n)</code> 为 Qin 2023 原文式号；<code>(P-n)</code> 为本项目定义，不与论文式号冲突。</blockquote>
+<hr>
+<h2 id="1-符号表">1 符号表</h2>
+<h3 id="1-1-文献层">1.1 文献层</h3>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">符号</th>
+<th class="align-left">含义</th>
+<th class="align-left">单位</th>
+<th class="align-left">备注</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left"><code>Uin</code></td>
+<td class="align-left">输入直流母线电压</td>
+<td class="align-left">V</td>
+<td class="align-left">样机 45 V</td>
+</tr>
+<tr>
+<td class="align-left"><code>Uo</code></td>
+<td class="align-left">输出电容电压</td>
+<td class="align-left">V</td>
+<td class="align-left">0→720 V</td>
+</tr>
+<tr>
+<td class="align-left"><code>Uref</code></td>
+<td class="align-left">目标输出电压</td>
+<td class="align-left">V</td>
+<td class="align-left">720 V</td>
+</tr>
+<tr>
+<td class="align-left"><code>Uref1</code></td>
+<td class="align-left">预充切换电压</td>
+<td class="align-left">V</td>
+<td class="align-left">40 V</td>
+</tr>
+<tr>
+<td class="align-left"><code>Uref2</code></td>
+<td class="align-left">Burst 重启下限</td>
+<td class="align-left">V</td>
+<td class="align-left">论文未给具体数</td>
+</tr>
+<tr>
+<td class="align-left"><code>n</code></td>
+<td class="align-left">变压器变比 <code>Ns/Np</code></td>
+<td class="align-left">—</td>
+<td class="align-left">16</td>
+</tr>
+<tr>
+<td class="align-left"><code>Lr</code></td>
+<td class="align-left">谐振/漏感</td>
+<td class="align-left">H</td>
+<td class="align-left">1.63 μH</td>
+</tr>
+<tr>
+<td class="align-left"><code>Cr</code></td>
+<td class="align-left">串联谐振电容</td>
+<td class="align-left">F</td>
+<td class="align-left">6.22 μF</td>
+</tr>
+<tr>
+<td class="align-left"><code>Cp</code></td>
+<td class="align-left">并联/寄生电容</td>
+<td class="align-left">F</td>
+<td class="align-left"><code>k = Cp/Cr = 0.213</code></td>
+</tr>
+<tr>
+<td class="align-left"><code>fr</code></td>
+<td class="align-left">谐振频率 <code>1/(2π√(LrCr))</code></td>
+<td class="align-left">Hz</td>
+<td class="align-left">50 kHz</td>
+</tr>
+<tr>
+<td class="align-left"><code>fs</code></td>
+<td class="align-left">开关频率</td>
+<td class="align-left">Hz</td>
+<td class="align-left">61–67 kHz</td>
+</tr>
+<tr>
+<td class="align-left"><code>fmax</code></td>
+<td class="align-left">开关频率上限</td>
+<td class="align-left">Hz</td>
+<td class="align-left">67 kHz</td>
+</tr>
+<tr>
+<td class="align-left"><code>ω</code></td>
+<td class="align-left">角频率 <code>2πfs</code></td>
+<td class="align-left">rad/s</td>
+<td class="align-left">—</td>
+</tr>
+<tr>
+<td class="align-left"><code>M</code></td>
+<td class="align-left">归一化电压增益 <code>Uo/(nUin)</code></td>
+<td class="align-left">—</td>
+<td class="align-left">0→1</td>
+</tr>
+<tr>
+<td class="align-left"><code>Fn</code></td>
+<td class="align-left">归一化频率 <code>fs/fr</code></td>
+<td class="align-left">—</td>
+<td class="align-left">&gt;1</td>
+</tr>
+<tr>
+<td class="align-left"><code>θ</code></td>
+<td class="align-left">整流二极管半周期导通角</td>
+<td class="align-left">rad</td>
+<td class="align-left">随 <code>M</code>、<code>Fn</code> 变</td>
+</tr>
+<tr>
+<td class="align-left"><code>Im</code></td>
+<td class="align-left">谐振电流峰值</td>
+<td class="align-left">A</td>
+<td class="align-left">≤105 A</td>
+</tr>
+<tr>
+<td class="align-left"><code>Imax</code></td>
+<td class="align-left">最大谐振电流</td>
+<td class="align-left">A</td>
+<td class="align-left">105 A</td>
+</tr>
+<tr>
+<td class="align-left"><code>Io</code></td>
+<td class="align-left">平均输出电流</td>
+<td class="align-left">A</td>
+<td class="align-left">—</td>
+</tr>
+<tr>
+<td class="align-left"><code>Iref</code></td>
+<td class="align-left">参考输出电流</td>
+<td class="align-left">A</td>
+<td class="align-left">在线计算</td>
+</tr>
+<tr>
+<td class="align-left"><code>Xin</code></td>
+<td class="align-left">输入电抗</td>
+<td class="align-left">Ω</td>
+<td class="align-left">&gt;0 为感性</td>
+</tr>
+<tr>
+<td class="align-left"><code>k</code></td>
+<td class="align-left">电容比 <code>Cp/Cr</code></td>
+<td class="align-left">—</td>
+<td class="align-left">0.213</td>
+</tr>
+</tbody></table></div>
+<h3 id="1-2-项目层">1.2 项目层</h3>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">符号</th>
+<th class="align-left">含义</th>
+<th class="align-left">单位</th>
+<th class="align-left">备注</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left"><code>Vo</code></td>
+<td class="align-left">输出电容电压</td>
+<td class="align-left">V</td>
+<td class="align-left">0→800 V</td>
+</tr>
+<tr>
+<td class="align-left"><code>Co</code></td>
+<td class="align-left">等效输出电容</td>
+<td class="align-left">F</td>
+<td class="align-left">3.125 μF</td>
+</tr>
+<tr>
+<td class="align-left"><code>io_j</code></td>
+<td class="align-left">第 j 相馈线电流</td>
+<td class="align-left">A</td>
+<td class="align-left">j = a,b,c</td>
+</tr>
+<tr>
+<td class="align-left"><code>i_comm,ℓ</code></td>
+<td class="align-left">第 ℓ 次换流的有效换流电流</td>
+<td class="align-left">A</td>
+<td class="align-left">按方向取符号</td>
+</tr>
+<tr>
+<td class="align-left"><code>Qreq</code></td>
+<td class="align-left">单次完整换流所需电荷</td>
+<td class="align-left">C</td>
+<td class="align-left">≈111.010 nC</td>
+</tr>
+<tr>
+<td class="align-left"><code>teff</code></td>
+<td class="align-left">100 ns 命令死区对应的有效换流窗口</td>
+<td class="align-left">s</td>
+<td class="align-left">79.281831 ns</td>
+</tr>
+<tr>
+<td class="align-left"><code>Icomm,min</code></td>
+<td class="align-left">换流电流代理下限</td>
+<td class="align-left">A</td>
+<td class="align-left">1.4001947 A</td>
+</tr>
+<tr>
+<td class="align-left"><code>F(Vo)</code></td>
+<td class="align-left">电压 <code>Vo</code> 下的可行频率集合</td>
+<td class="align-left">Hz</td>
+<td class="align-left">见 (P-2)</td>
+</tr>
+<tr>
+<td class="align-left"><code>fs*(Vo)</code></td>
+<td class="align-left">最终选频</td>
+<td class="align-left">Hz</td>
+<td class="align-left">59 节点表</td>
+</tr>
+<tr>
+<td class="align-left"><code>T20→800</code></td>
+<td class="align-left">20→800 V 准静态充电时间</td>
+<td class="align-left">s</td>
+<td class="align-left">2.089438 ms</td>
+</tr>
+<tr>
+<td class="align-left"><code>t800</code></td>
+<td class="align-left">0→800 V 首次到压时间</td>
+<td class="align-left">s</td>
+<td class="align-left">2.153487 ms（M1）</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h2 id="2-文献公式-qin-2023">2 文献公式（Qin 2023）</h2>
+<h3 id="2-1-归一化与谐振">2.1 归一化与谐振</h3>
+<pre class="code"><code class="language-text">M  = Uo/(n Uin)                                      (Q-10)
+Fn = fs/fr                                           (Q-12)
+fr = 1/(2π√(LrCr))                                   (Q-12)
+k  = Cp/Cr                                           (Q-12)
+ω  = 2πfs</code></pre>
+<h3 id="2-2-连续谐振电流假设">2.2 连续谐振电流假设</h3>
+<pre class="code"><code class="language-text">ir(t) = Im sin(ωt)                                   (Q-2)</code></pre>
+<p>含义：谐振电流连续、近似正弦；<code>Im</code> 为峰值。论文选择 <code>ir</code> 而非不连续的 <code>iT</code> 作为 FHA 基准。</p>
+<h3 id="2-3-输出电流与峰值电流">2.3 输出电流与峰值电流</h3>
+<pre class="code"><code class="language-text">Io = Im (1 − cosθ)/(nπ)                              (Q-13)
+Im = 2 ω Cp Uo / [n (1 + cosθ)]                      (Q-2 的等价形式)</code></pre>
+<ul>
+<li><code>Io</code> 由副边整流电流在半周期内积分得到；</li>
+<li><code>Im</code> 由 <code>Cp</code> 的充放电电荷平衡得到；</li>
+<li>两式说明 <code>Io</code>、<code>Im</code> 都由 <code>(M, Fn)</code> 通过 <code>θ</code> 决定，不能只看 <code>Im</code>。</li>
+</ul>
+<blockquote>注意：式 (Q-2) 在不同版本中可能写作 <code>Cp</code> 电压/电荷形式；上面是论文式 (2) 与 (13) 联立后的常用等价写法。引用时以原文式号为准，不要把它写成“论文原式”。</blockquote>
+<h3 id="2-4-导通角拟合">2.4 导通角拟合</h3>
+<pre class="code"><code class="language-text">cosθ = P(M, Fn; k = 0.213)                            (Q-11)</code></pre>
+<p>论文式 (11) 是 <code>k = 0.213</code> 下的多项式拟合，用于把 <code>cosθ</code> 显式写成 <code>M</code>、<code>Fn</code> 的函数。<strong>本文件不转抄系数</strong>：一是排版易错，二是它只对该样机参数有效。需要数值复现时回原文 p.7（PDF p.7）取系数。</p>
+<h3 id="2-5-电流应力边界">2.5 电流应力边界</h3>
+<pre class="code"><code class="language-text">Io = Im (1−cosθ)/(nπ) &lt; Imax (1−cosθ)/(nπ)            (Q-14)</code></pre>
+<p>代入 (Q-2)(Q-11)(Q-13) 得：</p>
+<pre class="code"><code class="language-text">P_Imax(M, Fn) &lt; Imax                                  (Q-15)</code></pre>
+<p>解出最小可行归一化频率 <code>Fnmin1</code>。</p>
+<h3 id="2-6-zvs-边界">2.6 ZVS 边界</h3>
+<pre class="code"><code class="language-text">Xin = ωLr − 1/(ωCr) + (θ − π − cosθ sinθ)/(πωCp) &gt; 0  (Q-16)
+kπ(Fn² − 1) + 0.4434 cos3θ − 2.031 cosθ − 1.571 &gt; 0   (Q-17)</code></pre>
+<p>代入 (Q-11) 得 <code>Fnmin2</code>。式 (Q-19) 是 (Q-17) 的展开多项式（论文给出系数）。</p>
+<p><strong>适用域</strong>：<code>Xin &gt; 0</code> 是“输入阻抗感性”的近似判据；不是死区电荷/Coss 的严格 ZVS 认证。</p>
+<h3 id="2-7-频率范围">2.7 频率范围</h3>
+<pre class="code"><code class="language-text">1 &lt; Fn &lt; fmax/fr                                      (Q-18)</code></pre>
+<h3 id="2-8-频率下界合成">2.8 频率下界合成</h3>
+<pre class="code"><code class="language-text">Fnmin = min{ fmax/fr , max(Fnmin1, Fnmin2) }          (Q-20)</code></pre>
+<p><strong>实现要点</strong>：先判 <code>max(Fnmin1,Fnmin2) ≤ fmax/fr</code> 是否成立；不成立时无可行解，不能把截断值当可行解。</p>
+<h3 id="2-9-参考电流">2.9 参考电流</h3>
+<pre class="code"><code class="language-text">Iref = Im(1 − cosθ)/(nπ)                              (Q-13) 回代</code></pre>
+<p>流程：<code>Fnmin</code> → 式 (Q-11) 得 <code>cosθ</code> → 式 (Q-13) 得 <code>Iref</code> → 电流 PI。</p>
+<hr>
+<h2 id="3-项目公式-最终-59-节点轨迹">3 项目公式（最终 59 节点轨迹）</h2>
+<h3 id="3-1-逐点优化">3.1 逐点优化</h3>
+<pre class="code"><code class="language-text">fs*(Vo) = arg max  Io(Vo, fs)                         (P-1)
+          fs ∈ F(Vo)</code></pre>
+<ul>
+<li><code>Io(Vo,fs)</code> 是三相共用整流桥的平均输出电流，由 HOGA 冻结 <code>Vo</code> 周期解给出；</li>
+<li>不是三个单相电流相加，也不是瞬时电流。</li>
+</ul>
+<h3 id="3-2-可行集合">3.2 可行集合</h3>
+<pre class="code"><code class="language-text">F(Vo) = { fs :
+    HOGA 物理守卫通过（电流零和、钳位残差、能量闭合等）,
+    阶数验收通过（H31/H63，按点）,
+    CCM 分支存在且稳定,
+    max_j |io_j| ≤ 14 A,
+    min_ℓ i_comm,ℓ ≥ 1.40019 A,
+    210 kHz ≤ fs ≤ 340 kHz }                          (P-2)</code></pre>
+<p>各项含义：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">项</th>
+<th class="align-left">来源</th>
+<th class="align-left">性质</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">HOGA 守卫</td>
+<td class="align-left">三相 HOGA 周期解</td>
+<td class="align-left">数值/物理必要条件</td>
+</tr>
+<tr>
+<td class="align-left">阶数验收</td>
+<td class="align-left">H31/H63 收敛检查</td>
+<td class="align-left">数值精度门槛</td>
+</tr>
+<tr>
+<td class="align-left">CCM</td>
+<td class="align-left">选定导通分支</td>
+<td class="align-left">模型适用域</td>
+</tr>
+<tr>
+<td class="align-left">14 A</td>
+<td class="align-left">研究情景</td>
+<td class="align-left"><strong>不是器件额定</strong></td>
+</tr>
+<tr>
+<td class="align-left">1.40019 A</td>
+<td class="align-left"><code>Qreq/teff</code></td>
+<td class="align-left"><strong>必要能力代理，不是 ZVS 认证</strong></td>
+</tr>
+<tr>
+<td class="align-left">210–340 kHz</td>
+<td class="align-left">研究搜索窗口</td>
+<td class="align-left">不是硬件许可</td>
+</tr>
+</tbody></table></div>
+<h3 id="3-3-换流电荷代理">3.3 换流电荷代理</h3>
+<pre class="code"><code class="language-text">Qreq  ≈ 2 × Qoss(50 V) = 2 × 55.505 nC = 111.010 nC   (P-3)
+teff  = 79.281831 ns                                  (P-4)
+Icomm,min = Qreq/teff = 1.4001947 A                   (P-5)</code></pre>
+<ul>
+<li><code>Qoss(50 V) = 55.505 nC</code>、<code>1.039904 μJ</code> 来自 MOS 手册 19 锚点分段线性积分（IPP70N10S3L-12）；</li>
+<li>对称桥臂完整换流需要两只 MOS 的电荷，故乘 2；</li>
+<li><code>teff</code> 由 100 ns 命令死区与 14.945 ns RC 门极、2 V 阈值推得；</li>
+<li>这个代理只回答“电流在有效窗口内能否提供足够电荷”，不回答“Vds 是否真的到零”。</li>
+</ul>
+<h3 id="3-4-准静态充电时间">3.4 准静态充电时间</h3>
+<pre class="code"><code class="language-text">T20→800 = Co ∫[20,800] dV / Io(V, fs*(V))             (P-6)
+t800    = t20 + T20→800                               (P-7)</code></pre>
+<ul>
+<li><code>Co = 3.125 μF</code>；</li>
+<li><code>t20 = 65.456 μs</code>（共同启动，M2 口径）；</li>
+<li>数值积分层级：59 节点分段/Simpson；不要把显示小数位当误差上界；</li>
+<li>适用条件：每周期 <code>ΔVo</code> 足够小、轨道可达、<code>Io &gt; 0</code>。</li>
+</ul>
+<h3 id="3-5-分段常值频率与连续相位">3.5 分段常值频率与连续相位</h3>
+<pre class="code"><code class="language-text">fs(Vo) = f_k,   V_k ≤ Vo &lt; V_{k+1},  k = 1..59         (P-8)
+θ(t)   = ∫ 2π fs(Vo(τ)) dτ                             (P-9)</code></pre>
+<ul>
+<li>实现用 1-D 查表（Flat / zero-order hold），<strong>区间内不插值</strong>；</li>
+<li>三相相位由同一积分器产生，频率切换时相位连续，保持 120°；</li>
+<li>215–293 V 的 41 个点本身构成一条直线桥，表内已细化；运行时仍按节点查表。</li>
+</ul>
+<h3 id="3-6-停充锁存">3.6 停充锁存</h3>
+<pre class="code"><code class="language-text">q[k+1] = q[k] OR (Vo[k] ≥ 800 V)                       (P-10)
+GateEnable = 1 − q                                   (P-11)</code></pre>
+<ul>
+<li>100 ns 采样；</li>
+<li>锁存后封锁六路驱动，模型继续求解，保留残余能量与过冲；</li>
+<li><strong>没有</strong>电压回落自动重启、预关断补偿或耗能钳位；</li>
+<li>重开仿真复位。</li>
+</ul>
+<h3 id="3-7-理想开关动态的数值设置">3.7 理想开关动态的数值设置</h3>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">项</th>
+<th class="align-left">值</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">求解器</td>
+<td class="align-left">ode15s</td>
+</tr>
+<tr>
+<td class="align-left">RelTol / AbsTol</td>
+<td class="align-left">2e-7 / 2e-9</td>
+</tr>
+<tr>
+<td class="align-left">MaxStep</td>
+<td class="align-left"><code>1/(200·299257)</code> s</td>
+</tr>
+<tr>
+<td class="align-left">StopTime</td>
+<td class="align-left">3.5 ms</td>
+</tr>
+<tr>
+<td class="align-left">器件</td>
+<td class="align-left"><code>Ron = 1e-6 Ω</code>、<code>Vf = 0.6 V</code>、<code>Goff = 1e-11 S</code>、<code>td = 0</code>、<code>Coss = 0</code></td>
+</tr>
+<tr>
+<td class="align-left">调制</td>
+<td class="align-left">三相 120°、50% 占空比、无移相；仅 <code>fs(Vo)</code> 变化</td>
+</tr>
+</tbody></table></div>
+<blockquote>这套设置下 <code>t800 = 2.153487 ms</code>。它<strong>不是</strong> 100 ns 死区 + Coss/Cj 的器件近似模型。</blockquote>
+<hr>
+<h2 id="4-文献公式与项目公式的对应">4 文献公式与项目公式的对应</h2>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">文献</th>
+<th class="align-left">项目</th>
+<th class="align-left">关系</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left"><code>Imax</code></td>
+<td class="align-left">相峰值 14 A</td>
+<td class="align-left">都是“电流应力上限”，但对象/定义不同：文献是单相谐振峰值，项目是三相馈线峰值</td>
+</tr>
+<tr>
+<td class="align-left"><code>Xin &gt; 0</code></td>
+<td class="align-left">换流方向 + 电荷代理 + 残压</td>
+<td class="align-left">项目不用 <code>Xin</code> 解析式；用逐事件诊断</td>
+</tr>
+<tr>
+<td class="align-left"><code>fr &lt; fs &lt; fmax</code></td>
+<td class="align-left">210–340 kHz 搜索窗 + 最终 241.59–299.26 kHz</td>
+<td class="align-left">项目窗口是研究设置，不是硬件边界</td>
+</tr>
+<tr>
+<td class="align-left"><code>Fnmin = min{...}</code></td>
+<td class="align-left">离散搜索 + 表格</td>
+<td class="align-left">项目不实现式 (20)；不能把式 (20) 写成项目控制律</td>
+</tr>
+<tr>
+<td class="align-left"><code>Iref</code> + 电流 PI</td>
+<td class="align-left"><code>fs(Vo)</code> 开环前馈</td>
+<td class="align-left"><strong>最大差异</strong>：项目没有电流闭环</td>
+</tr>
+<tr>
+<td class="align-left">Burst</td>
+<td class="align-left">800 V 锁存</td>
+<td class="align-left">项目不自动重启</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h2 id="5-常见公式错误">5 常见公式错误</h2>
+<ol>
+<li><strong>把式 (11) 当通用式</strong>：它只对 <code>k = 0.213</code> 的样机参数拟合；换 <code>Cp/Cr</code>、<code>Lr</code>、<code>fr</code> 必须重推。</li>
+<li><strong>把 <code>Io = Im(1−cosθ)/(nπ)</code> 当成恒流关系</strong>：<code>θ</code> 随 <code>M</code>、<code>Fn</code> 变，<code>Io</code> 不是 <code>Im</code> 的常数倍。</li>
+<li><strong>把 <code>Xin &gt; 0</code> 当 ZVS 认证</strong>：它只是输入阻抗感性；实际 ZVS 还要看死区电荷、Coss、门极时序。</li>
+<li><strong>把式 (20) 当“保证全部约束”</strong>：外层 <code>min</code> 只是截断；下界超上限时无解。</li>
+<li><strong>把 <code>t800</code> 与 <code>T20→800</code> 混用</strong>：前者含 0→20 V 启动，后者不含；差约 65 μs。</li>
+<li><strong>把准静态积分当动态结果</strong>：<code>Co∫dV/Io</code> 是估算；启动、频率切换、停充尾流要时域模型。</li>
+<li><strong>把 M1 的 2.153487 ms 与 M2 的 2.572428 ms 并列</strong>：模型层级不同，不能直接比较。</li>
+<li><strong>把 14 A 当器件额定</strong>：它是研究情景；最终表 13.99995 A 只是贴线。</li>
+</ol>
+<hr>
+<h2 id="6-可直接粘贴的-latex">6 可直接粘贴的 LaTeX</h2>
+<pre class="code"><code class="language-latex">% 文献：归一化
+M=\frac{U_o}{nU_{in}},\qquad F_n=\frac{f_s}{f_r},\qquad
+f_r=\frac{1}{2\pi\sqrt{L_rC_r}},\qquad k=\frac{C_p}{C_r}
+
+% 文献：电流关系
+I_o=\frac{I_m(1-\cos\theta)}{n\pi},\qquad
+I_m=\frac{2\omega C_pU_o}{n(1+\cos\theta)}
+
+% 文献：ZVS 边界
+X_{in}=\omega L_r-\frac{1}{\omega C_r}
++\frac{\theta-\pi-\cos\theta\sin\theta}{\pi\omega C_p}&gt;0
+
+% 文献：频率下界
+F_{n\min}=\min\left\{\frac{f_{\max}}{f_r},
+\max\left(F_{n\min1},F_{n\min2}\right)\right\}
+
+% 项目：逐点优化
+f_s^{\star}(V_o)=\arg\max_{f_s\in\mathcal{F}(V_o)}
+\overline{I}_o(V_o,f_s)
+
+% 项目：准静态时间
+T_{20\to800}=C_o\int_{20}^{800}\frac{\mathrm{d}V}
+{\overline{I}_o\!\left(V,f_s^{\star}(V)\right)}</code></pre>
+<hr>
+<p><em>本文件只做公式整理，未新增推导或数值计算。最后更新：2026-10-25。</em></p>
+</article>
+</main>
+<footer class="footer">
+  <p>公开归档 · 代码 MIT · 原创文档 CC BY 4.0 · 原论文不随仓库分发 ·
+  <a href="https://github.com/sososoamazing/lcc-aoc-charging-strategy">GitHub</a> ·
+  <a href="https://sososoamazing.github.io/lcc-aoc-charging-strategy/">Pages</a></p>
+  <p>最后构建：2026-10-25。本页由 <code>tools/build_site.py</code> 从 Markdown 生成；如与源文件冲突，以源文件为准。</p>
+</footer>
+</body>
+</html>

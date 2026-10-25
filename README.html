@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>三相 LCC 电容充电电源 — AOC 策略资料包（最终版） · 三相 LCC 电容充电电源 AOC 策略资料包</title>
+<meta name="description" content="50 V → 800 V 三相 Δ/Y LCC 的 AOC 策略梳理：Qin 2023 文献精读、最终 59 节点离线 fs(Vo) 轨迹、20 点验证、模型层级与论文写作边界。">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="alternate" type="text/markdown" href="ONE_PAGE.md">
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$','$'],['\(','\)']], displayMath: [['$$','$$'],['\[','\]']] },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner">
+  <a class="brand" href="index.html">LCC<span>·</span>AOC</a>
+  <nav class="nav">
+    <a href="index.html">总览</a>
+    <a href="docs/01_paper_AOC_digest.html">文献</a>
+    <a href="docs/03_project_AOC_final.html">最终轨迹</a>
+    <a href="docs/04_validation.html">验证</a>
+    <a href="docs/05_claims_and_boundaries.html">边界</a>
+    <a href="docs/06_writing_guide.html">写作</a>
+    <a href="docs/07_sources.html">来源</a>
+    <a href="data/aoc_59_nodes.csv">数据</a>
+    <a href="https://github.com/sososoamazing/lcc-aoc-charging-strategy">GitHub</a>
+  </nav>
+</div></header>
+
+<main class="layout">
+<aside class="toc"><h3>本页目录</h3><a class="lvl2" href="#30-秒结论">30 秒结论</a><a class="lvl3" href="#关键图">关键图</a><a class="lvl2" href="#快速入口">快速入口</a><a class="lvl2" href="#研究对象-本项目">研究对象（本项目）</a><a class="lvl2" href="#仓库结构">仓库结构</a><a class="lvl2" href="#给-chatgpt-网页端的使用方法">给 ChatGPT 网页端的使用方法</a><a class="lvl3" href="#最短路径">最短路径</a><a class="lvl3" href="#推荐提示词">推荐提示词</a><a class="lvl2" href="#版本政策-为什么只留这些">版本政策（为什么只留这些）</a><a class="lvl2" href="#边界-必读">边界（必读）</a><a class="lvl2" href="#引用">引用</a><a class="lvl2" href="#许可">许可</a><a class="lvl2" href="#相关仓库">相关仓库</a></aside>
+<article class="content">
+<h1 id="三相-lcc-电容充电电源-aoc-策略资料包-最终版">三相 LCC 电容充电电源 — AOC 策略资料包（最终版）</h1>
+<p><strong>50 V → 800 V 三相 Δ/Y LCC 谐振电容充电电源的 AOC（adaptive optimization charging，自适应优化充电）策略梳理。</strong>本仓库只保留<strong>最终版</strong>：文献层为 Qin 等 2023 年 IEEE JESTPE 论文的 AOC 方法；项目层为 2026-10-20 定稿、2026-10-24 完成 20 点验证的 <strong>59 节点 AOC 频率轨迹</strong>。旧 21 节点 280–299 kHz 表、10 点验证版、20 段实施表均明确标注为历史/中间版本，不与最终版混用。</p>
+<blockquote>本仓库是<strong>写作资料包</strong>，不是硬件实验报告，也不是完整项目镜像。所有“已验证/未验证”的边界见 <a href="docs/05_claims_and_boundaries.html"><code>docs/05_claims_and_boundaries.md</code></a>。原论文 PDF 受 IEEE 版权限制，<strong>不随仓库分发</strong>；题录、DOI 与逐节阅读摘要见 <a href="docs/01_paper_AOC_digest.html"><code>docs/01_paper_AOC_digest.md</code></a>。</blockquote>
+<hr>
+<h2 id="30-秒结论">30 秒结论</h2>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">问题</th>
+<th class="align-left">结论</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">文献中的 AOC 是什么？</td>
+<td class="align-left">在谐振电流上限、ZVS 边界、频率上下限约束下，随输出电压实时求最大可行输出电流参考，再经电流 PI 实施；单相 2174 W 样机、45→720 V、8.13 mF、105 A，1.82 s→1.62 s（速度提高 12.35%）</td>
+</tr>
+<tr>
+<td class="align-left">本项目的“AOC”是什么？</td>
+<td class="align-left"><strong>借鉴 AOC 目标的离线查表轨迹</strong>：三相 HOGA 逐电压点搜索最大平均整流电流，生成 59 节点 <code>fs(Vo)</code> 表；开环频率前馈 + 连续相位 + 800 V 锁存，<strong>没有在线电流 PI</strong></td>
+</tr>
+<tr>
+<td class="align-left">最终轨迹的关键数</td>
+<td class="align-left">59 节点，20–800 V，<strong>241.5905–299.2573 kHz</strong>；0–20 V 用 300 kHz 启动；相峰值 ≤ <strong>13.99995 A</strong>（14 A 研究情景）；换流电流代理最小 <strong>1.43999 A</strong>（阈值 1.40019 A）</td>
+</tr>
+<tr>
+<td class="align-left">充电时间</td>
+<td class="align-left">准静态 20→800 V <strong>2.089438 ms</strong>；理想开关+二极管压降动态 <code>t800 = 2.153487 ms</code>；同模型旧 21 节点表 2.596206 ms（<strong>−17.05%</strong>）</td>
+</tr>
+<tr>
+<td class="align-left">模型精度</td>
+<td class="align-left">20 点全部有效：HOGA-H49 的 <code>Io</code> MAPE <strong>0.00566%</strong>、RMS 0.00391%、峰值 0.0270%、NRMSE 0.0307%</td>
+</tr>
+<tr>
+<td class="align-left">最强证据到哪</td>
+<td class="align-left">冻结 <code>Vo</code> 的 Simulink 理想开关参考 + 20 点 HOGA 验证；<strong>没有硬件实验</strong>；器件近似模型（100 ns、Coss、Cj）下最终 59 节点表<strong>尚未跑全程</strong></td>
+</tr>
+<tr>
+<td class="align-left">能否写“实现了 AOC”？</td>
+<td class="align-left"><strong>不能</strong>。应写“借鉴 AOC 的约束优化目标，构造离线选频轨迹”；原论文的在线电流闭环未实现</td>
+</tr>
+</tbody></table></div>
+<h3 id="关键图">关键图</h3>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">最终 59 节点轨迹的开关频率（准静态重建）</th>
+<th class="align-left">20 点平均输出电流精度</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left"><img src="figures/03_revised_frequency_time.png" alt="最终轨迹频率" loading="lazy"></td>
+<td class="align-left"><img src="figures/fig_aoc2_Io.png" alt="20 点 Io 精度" loading="lazy"></td>
+</tr>
+</tbody></table></div>
+<blockquote>左图：20→800 V、2.089 ms 准静态轨迹；371 V 取全表最低 241.59 kHz，410 V 分支跳变到 272.27 kHz。右图：冻结 <code>Vo</code> 的 Simulink 理想开关参考，HOGA-H49 的 <code>Io</code> MAPE 0.00566%。两图都<strong>不是</strong>开关级动态波形，也不是硬件数据。</blockquote>
+<hr>
+<h2 id="快速入口">快速入口</h2>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">入口</th>
+<th class="align-left">适合</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left"><strong><a href="ONE_PAGE.html">一页式总览 ONE_PAGE.md</a></strong></td>
+<td class="align-left">一次看懂文献 + 项目 + 可写/不可写</td>
+</tr>
+<tr>
+<td class="align-left"><strong><a href="docs/01_paper_AOC_digest.html">文献精读</a></strong></td>
+<td class="align-left">Qin 2023 的问题、CRC-FHA、三条边界、三阶段控制、实验与局限</td>
+</tr>
+<tr>
+<td class="align-left"><strong><a href="docs/02_equations.html">公式与符号</a></strong></td>
+<td class="align-left">论文式 (2)(11)–(20) 的转写、适用域与不可移植项</td>
+</tr>
+<tr>
+<td class="align-left"><strong><a href="docs/03_project_AOC_final.html">最终 AOC 轨迹</a></strong></td>
+<td class="align-left">59 节点表怎么来、约束是什么、结果多少</td>
+</tr>
+<tr>
+<td class="align-left"><strong><a href="docs/04_validation.html">验证与证据等级</a></strong></td>
+<td class="align-left">20 点验证、模型层级、哪些数能放在一张表</td>
+</tr>
+<tr>
+<td class="align-left"><strong><a href="docs/05_claims_and_boundaries.html">可写与不可写</a></strong></td>
+<td class="align-left">逐条 claim–evidence 对照、禁用表述</td>
+</tr>
+<tr>
+<td class="align-left"><strong><a href="docs/06_writing_guide.html">写作指南</a></strong></td>
+<td class="align-left">§4.1.3 / 绪论段的段落骨架、图表建议、GPT 提示词</td>
+</tr>
+<tr>
+<td class="align-left"><strong><a href="docs/07_sources.html">来源索引</a></strong></td>
+<td class="align-left">每个数字的出处、版本关系、未随包文件</td>
+</tr>
+</tbody></table></div>
+<p>网页版（GitHub Pages）：<strong>https://sososoamazing.github.io/lcc-aoc-charging-strategy/</strong></p>
+<hr>
+<h2 id="研究对象-本项目">研究对象（本项目）</h2>
+<pre class="code"><code class="language-text">Vin 50 V → 三相三桥臂（120°）→ 每相 Ls 4.7 μH / Cs 135 nF
+→ Δ 接 Cp 27 nF/边 + 三台 1:4 变压器（一次 Δ / 二次 Y 浮空）
+→ 共用六二极管桥 → Co 6.25 μF × 2 串联 = 3.125 μF → Vo 0–800 V（1 J）</code></pre>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">量</th>
+<th class="align-right">值</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left"><code>Vin</code></td>
+<td class="align-right">50 V</td>
+</tr>
+<tr>
+<td class="align-left"><code>Ls</code> / <code>Cs</code></td>
+<td class="align-right">4.7 μH / 135 nF（每馈线）</td>
+</tr>
+<tr>
+<td class="align-left"><code>Cp</code>（Δ 每边）</td>
+<td class="align-right">27 nF</td>
+</tr>
+<tr>
+<td class="align-left"><code>n = Ns/Np</code></td>
+<td class="align-right">4</td>
+</tr>
+<tr>
+<td class="align-left"><code>Co</code></td>
+<td class="align-right">3.125 μF</td>
+</tr>
+<tr>
+<td class="align-left">目标电压</td>
+<td class="align-right">800 V</td>
+</tr>
+<tr>
+<td class="align-left">储能增量</td>
+<td class="align-right">1 J</td>
+</tr>
+<tr>
+<td class="align-left">研究电流上限</td>
+<td class="align-right">14 A（相电流峰值，<strong>情景假设，不是器件额定</strong>）</td>
+</tr>
+<tr>
+<td class="align-left">研究频率窗口</td>
+<td class="align-right">210–340 kHz（搜索）；最终表 241.59–299.26 kHz</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h2 id="仓库结构">仓库结构</h2>
+<pre class="code"><code class="language-text">.
+├─ ONE_PAGE.md                 # 一页式总览（LLM 友好）
+├─ index.html                  # GitHub Pages 单页（由 ONE_PAGE 生成）
+├─ llms.txt                    # 给 LLM/爬虫的 URL 索引
+├─ docs/
+│  ├─ 00_overview.md           # 范围、版本政策、时间线
+│  ├─ 01_paper_AOC_digest.md   # 文献精读
+│  ├─ 02_equations.md          # 公式、符号、适用域
+│  ├─ 03_project_AOC_final.md  # 最终 59 节点轨迹
+│  ├─ 04_validation.md         # 验证、模型层级、精度
+│  ├─ 05_claims_and_boundaries.md
+│  ├─ 06_writing_guide.md      # 论文写作骨架 + GPT 提示词
+│  └─ 07_sources.md            # 来源、哈希、版本关系
+├─ data/
+│  ├─ aoc_59_nodes.csv         # 最终频率表（59 节点，含 Io/Ipk/Icomm）
+│  ├─ aoc_20point_accuracy.csv # 20 点逐点精度
+│  ├─ aoc_20point_summary.csv  # MAPE/MAE 汇总
+│  ├─ aoc_20point_points.csv   # 20 点工况
+│  └─ model_layer_metrics.csv  # 各模型层的关键数（本包整理）
+├─ figures/                    # 项目自生成图（非论文原图）
+├─ tools/                      # 站点构建 + 包校验
+├─ SHA256SUMS.txt
+├─ CITATION.cff
+├─ LICENSE                     # 代码 MIT
+└─ LICENSE_DOCS.md             # 原创文档/图 CC BY 4.0</code></pre>
+<hr>
+<h2 id="给-chatgpt-网页端的使用方法">给 ChatGPT 网页端的使用方法</h2>
+<h3 id="最短路径">最短路径</h3>
+<p>把下面两个 URL 直接贴给 GPT（需开启联网/浏览）：</p>
+<ol>
+<li>一页式总览（raw）：</li>
+</ol>
+<p>   <code>https://raw.githubusercontent.com/sososoamazing/lcc-aoc-charging-strategy/main/ONE_PAGE.md</code></p>
+<ol>
+<li>写作指南（raw）：</li>
+</ol>
+<p>   <code>https://raw.githubusercontent.com/sososoamazing/lcc-aoc-charging-strategy/main/docs/06_writing_guide.md</code></p>
+<p>如果 GPT 打不开 raw 链接，给它 GitHub Pages： <code>https://sososoamazing.github.io/lcc-aoc-charging-strategy/</code></p>
+<h3 id="推荐提示词">推荐提示词</h3>
+<pre class="code"><code class="language-text">你是电力电子方向的论文写作助手。请先读取以下资料：
+https://raw.githubusercontent.com/sososoamazing/lcc-aoc-charging-strategy/main/ONE_PAGE.md
+https://raw.githubusercontent.com/sososoamazing/lcc-aoc-charging-strategy/main/docs/06_writing_guide.md
+
+任务：为我的硕士学位论文撰写“三相 LCC 电容充电电源的 AOC 型选频轨迹”一节（约 2500–3500 字）。
+硬性要求：
+1. 区分“文献的 AOC（在线电流闭环）”与“本文的 AOC 型离线查表轨迹”，不得声称实现了原论文的在线电流 PI；
+2. 只使用资料中标注为“最终版”的 59 节点轨迹与 2.153487 ms / 2.089438 ms 数据；
+3. 不得把器件近似模型（100 ns、Coss、Cj）下的 2.572428 ms、12.509%、3.180% 与最终 59 节点数据混在同一张表；
+4. 不得声称硬件 ZVS、全局最优、整机效率提升或三相速度提升百分比；
+5. 每个数值后标注模型层级（准静态 / 理想开关动态 / 器件近似 / 文献实验）。
+先输出三级提纲和“拟用数值清单”，我确认后再写正文。</code></pre>
+<p>更细的段落骨架、图表建议与“禁用句式”见 <a href="docs/06_writing_guide.html"><code>docs/06_writing_guide.md</code></a>。</p>
+<hr>
+<h2 id="版本政策-为什么只留这些">版本政策（为什么只留这些）</h2>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">内容</th>
+<th class="align-left">最终版</th>
+<th class="align-left">历史/中间版</th>
+<th class="align-left">处理</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">文献汇报</td>
+<td class="align-left"><code>release-final</code> 7 页稿（v6）+ 逐页讲稿 + 导师问答</td>
+<td class="align-left">v1–v5、<code>release/</code> 旧包</td>
+<td class="align-left">只保留文字摘要，不上传 PPT 历史版本</td>
+</tr>
+<tr>
+<td class="align-left">AOC 轨迹</td>
+<td class="align-left"><strong>59 节点 <code>aoc_smooth254_59_nodes.csv</code></strong></td>
+<td class="align-left">21 节点 280–299 kHz 表；20 段实施表；10 点验证</td>
+<td class="align-left">最终表进 <code>data/</code>；历史表只在版本表与对照中说明</td>
+</tr>
+<tr>
+<td class="align-left">轨迹验证</td>
+<td class="align-left"><strong>20 点 HOGA-H49 验证（2026-10-24）</strong></td>
+<td class="align-left">10 点 v1</td>
+<td class="align-left">只用 20 点</td>
+</tr>
+<tr>
+<td class="align-left">充电时间</td>
+<td class="align-left">准静态 2.089438 ms；动态 2.153487 ms</td>
+<td class="align-left">2.572428 ms（21 节点 + 器件模型）</td>
+<td class="align-left">分模型层级并列，不混算</td>
+</tr>
+<tr>
+<td class="align-left">论文草稿</td>
+<td class="align-left">2026-10-19 合排稿 §4.1.3 为 21 节点旧文</td>
+<td class="align-left">—</td>
+<td class="align-left">本包给出改写骨架，不直接改 docx</td>
+</tr>
+</tbody></table></div>
+<blockquote>“历史版”不等于“错误版”。它们在自己的模型/口径内仍是可复核记录；只是<strong>不是最终 AOC 轨迹</strong>，不能拿来当最终结果。</blockquote>
+<hr>
+<h2 id="边界-必读">边界（必读）</h2>
+<ul>
+<li><strong>文献 AOC 是单相、在线闭环、有 2174 W 实验</strong>；本项目是<strong>三相、离线查表、只有仿真</strong>。两者不能互相背书。</li>
+<li><strong>14 A 是研究情景</strong>，不是 MOSFET 额定、磁件饱和或热限额；最终表相峰值 13.99995 A 只是“贴着情景线”，不是“通过硬件安全认证”。</li>
+<li><strong>换流电流代理 1.40019 A</strong> 是 100 ns 命令死区 + RC 门极近似下的电荷筛选下限，<strong>不是 ZVS 认证</strong>。</li>
+<li><strong>HOGA 主方程是零物理死区、0.6 V 整流简化基准</strong>；Coss/Cj 动态只在器件近似模型中另算。</li>
+<li>器件近似模型下，旧 21 节点轨迹三条均超 14 A、启动各有 4 次残压失败；800 V 末端 7 个离散频点没有同时满足 14 A 与残压。<strong>最终 59 节点表尚未在该模型下跑全程</strong>。</li>
+<li>没有硬件、损耗/温升、闭环充电、参数鲁棒性、磁件验证；不能写“效率提升”“温升降低”“全程 ZVS”。</li>
+</ul>
+<p>完整清单见 <a href="docs/05_claims_and_boundaries.html"><code>docs/05_claims_and_boundaries.md</code></a>。</p>
+<hr>
+<h2 id="引用">引用</h2>
+<pre class="code"><code class="language-bibtex">@misc{LCC3AOC2026,
+  title  = {Three-Phase LCC Capacitor Charger: AOC Strategy Dossier (Final Version)},
+  year   = {2026},
+  note   = {GitHub repository},
+  url    = {https://github.com/sososoamazing/lcc-aoc-charging-strategy}
+}</code></pre>
+<p>文献引用：</p>
+<pre class="code"><code class="language-bibtex">@article{Qin2023AOC,
+  author  = {Qin, Mengjie and Chen, Wenjie and Ye, Aizhen and Zhang, Fan and Goetz, Stephan M. and Yang, Fengtao and Yu, Zheyuan and Yang, Xu},
+  title   = {Adaptive Optimization Charging Strategy for {LCC} Resonant Capacitor Charging Power Supply},
+  journal = {IEEE Journal of Emerging and Selected Topics in Power Electronics},
+  year    = {2023},
+  volume  = {11},
+  number  = {6},
+  pages   = {5675--5689},
+  doi     = {10.1109/JESTPE.2023.3301738}
+}</code></pre>
+<hr>
+<h2 id="许可">许可</h2>
+<ul>
+<li>代码/脚本：MIT，见 <a href="LICENSE"><code>LICENSE</code></a>。</li>
+<li>本仓库原创文档、整理表、项目自生成图：CC BY 4.0，见 <a href="LICENSE_DOCS.html"><code>LICENSE_DOCS.md</code></a>。</li>
+<li>原论文：版权归 IEEE/作者，<strong>未随仓库分发</strong>；引用请用 DOI。</li>
+<li>原项目内部报告/数据：按原项目约定；本仓库只做公开归档，不改变原作者权利。</li>
+</ul>
+<hr>
+<h2 id="相关仓库">相关仓库</h2>
+<ul>
+<li>HOGA 建模与 344 点扫描、AOC 20 点验证的完整归档：</li>
+</ul>
+<p>  https://github.com/sososoamazing/three-phase-lcc-hoga</p>
+<ul>
+<li>本仓库聚焦 <strong>AOC 策略本身</strong>（文献 + 最终轨迹 + 写作材料），不重复 HOGA 方法细节。</li>
+</ul>
+</article>
+</main>
+<footer class="footer">
+  <p>公开归档 · 代码 MIT · 原创文档 CC BY 4.0 · 原论文不随仓库分发 ·
+  <a href="https://github.com/sososoamazing/lcc-aoc-charging-strategy">GitHub</a> ·
+  <a href="https://sososoamazing.github.io/lcc-aoc-charging-strategy/">Pages</a></p>
+  <p>最后构建：2026-10-25。本页由 <code>tools/build_site.py</code> 从 Markdown 生成；如与源文件冲突，以源文件为准。</p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,649 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>03 项目最终 AOC 轨迹：59 节点查表 · 三相 LCC 电容充电电源 AOC 策略资料包</title>
+<meta name="description" content="50 V → 800 V 三相 Δ/Y LCC 的 AOC 策略梳理：Qin 2023 文献精读、最终 59 节点离线 fs(Vo) 轨迹、20 点验证、模型层级与论文写作边界。">
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="alternate" type="text/markdown" href="../ONE_PAGE.md">
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$','$'],['\(','\)']], displayMath: [['$$','$$'],['\[','\]']] },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner">
+  <a class="brand" href="../index.html">LCC<span>·</span>AOC</a>
+  <nav class="nav">
+    <a href="../index.html">总览</a>
+    <a href="../docs/01_paper_AOC_digest.html">文献</a>
+    <a href="../docs/03_project_AOC_final.html">最终轨迹</a>
+    <a href="../docs/04_validation.html">验证</a>
+    <a href="../docs/05_claims_and_boundaries.html">边界</a>
+    <a href="../docs/06_writing_guide.html">写作</a>
+    <a href="../docs/07_sources.html">来源</a>
+    <a href="../data/aoc_59_nodes.csv">数据</a>
+    <a href="https://github.com/sososoamazing/lcc-aoc-charging-strategy">GitHub</a>
+  </nav>
+</div></header>
+
+<main class="layout">
+<aside class="toc"><h3>本页目录</h3><a class="lvl2" href="#1-对象与目标">1 对象与目标</a><a class="lvl3" href="#1-1-主电路">1.1 主电路</a><a class="lvl3" href="#1-2-为什么需要-aoc-型轨迹">1.2 为什么需要 AOC 型轨迹</a><a class="lvl2" href="#2-优化问题">2 优化问题</a><a class="lvl3" href="#2-1-各项约束的来源">2.1 各项约束的来源</a><a class="lvl3" href="#2-2-换流代理的算法">2.2 换流代理的算法</a><a class="lvl2" href="#3-怎么得到-59-节点">3 怎么得到 59 节点</a><a class="lvl3" href="#3-1-搜索流程-按时间">3.1 搜索流程（按时间）</a><a class="lvl3" href="#3-2-20-段实施表-中间产物">3.2 20 段实施表（中间产物）</a><a class="lvl3" href="#3-3-254-v-修订">3.3 254 V 修订</a><a class="lvl3" href="#3-4-最终表的构成">3.4 最终表的构成</a><a class="lvl2" href="#4-最终表长什么样">4 最终表长什么样</a><a class="lvl3" href="#4-1-关键统计">4.1 关键统计</a><a class="lvl3" href="#4-2-轨迹形态-写作重点">4.2 轨迹形态（写作重点）</a><a class="lvl3" href="#4-3-图">4.3 图</a><a class="lvl2" href="#5-控制实现">5 控制实现</a><a class="lvl3" href="#5-1-结构">5.1 结构</a><a class="lvl3" href="#5-2-它不是什么">5.2 它不是什么</a><a class="lvl3" href="#5-3-动态模型的实际设置">5.3 动态模型的实际设置</a><a class="lvl2" href="#6-结果">6 结果</a><a class="lvl3" href="#6-1-准静态">6.1 准静态</a><a class="lvl3" href="#6-2-动态-m1">6.2 动态（M1）</a><a class="lvl3" href="#6-3-20-点模型精度">6.3 20 点模型精度</a><a class="lvl2" href="#7-与旧版-中间版的量化关系">7 与旧版/中间版的量化关系</a><a class="lvl2" href="#8-最终版仍然缺什么">8 最终版仍然缺什么</a><a class="lvl2" href="#9-写作时建议的-一句话定位">9 写作时建议的“一句话定位”</a></aside>
+<article class="content">
+<h1 id="03-项目最终-aoc-轨迹-59-节点查表">03 项目最终 AOC 轨迹：59 节点查表</h1>
+<blockquote>这是本资料包的核心。它回答：本项目的“AOC”到底是什么、怎么算出来、最终表长什么样、结果是多少、哪些还没做。对应文件：<code>data/aoc_59_nodes.csv</code>；对应验证：<code>docs/04_validation.md</code>。</blockquote>
+<hr>
+<h2 id="1-对象与目标">1 对象与目标</h2>
+<h3 id="1-1-主电路">1.1 主电路</h3>
+<pre class="code"><code class="language-text">Vin 50 V
+  → 三相三桥臂逆变（S1/S4→A，S2/S5→B，S3/S6→C；120°）
+  → 每相：Ls 4.7 μH → Cs 135 nF → Δ 接 Cp 27 nF/边
+  → 三台单相变压器 1:4（一次 Δ / 二次 Y 浮空）
+  → 共用六二极管桥（D1/D3/D5 上半桥，D2/D4/D6 下半桥）
+  → Co = 6.25 μF × 2 串联 = 3.125 μF
+  → Vo 0–800 V（储能增量 1 J）</code></pre>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">量</th>
+<th class="align-right">值</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left"><code>Vin</code></td>
+<td class="align-right">50 V</td>
+</tr>
+<tr>
+<td class="align-left"><code>Ls</code> / <code>Cs</code></td>
+<td class="align-right">4.7 μH / 135 nF</td>
+</tr>
+<tr>
+<td class="align-left"><code>Cp</code>（Δ 每边）</td>
+<td class="align-right">27 nF</td>
+</tr>
+<tr>
+<td class="align-left"><code>n = Ns/Np</code></td>
+<td class="align-right">4</td>
+</tr>
+<tr>
+<td class="align-left"><code>Co</code></td>
+<td class="align-right">3.125 μF</td>
+</tr>
+<tr>
+<td class="align-left"><code>Vo</code> 目标</td>
+<td class="align-right">800 V</td>
+</tr>
+<tr>
+<td class="align-left">储能增量</td>
+<td class="align-right">1 J</td>
+</tr>
+<tr>
+<td class="align-left">研究相峰值上限</td>
+<td class="align-right">14 A</td>
+</tr>
+<tr>
+<td class="align-left">研究频率窗口</td>
+<td class="align-right">210–340 kHz</td>
+</tr>
+</tbody></table></div>
+<h3 id="1-2-为什么需要-aoc-型轨迹">1.2 为什么需要 AOC 型轨迹</h3>
+<p>三相 LCC 的输出电流 <code>Io</code> 不是 <code>fs</code> 的单调单值函数：随 <code>Vo</code> 升高，整流导通对、<code>Cp</code> 钳位形态、三管/两管区间都会变。固定频率无法在每个电压点都用满器件能力：</p>
+<ul>
+<li>低压段用低频率可得到更大 <code>Io</code>，但相峰值接近 14 A；</li>
+<li>高压段降频可能提高 <code>Io</code>，却破坏换流方向/电荷条件；</li>
+<li>因此需要<strong>逐电压点</strong>在可行集合内选频，而不是一条全局单调的 <code>fs(Vo)</code> 直线。</li>
+</ul>
+<p>AOC 的思想正好是“逐点最大化可行输出电流”。本项目把它离散化到 HOGA 冻结 <code>Vo</code> 的周期解上。</p>
+<hr>
+<h2 id="2-优化问题">2 优化问题</h2>
+<pre class="code"><code class="language-text">fs*(Vo) = arg max  Io(Vo, fs)                         (1)
+          fs ∈ F(Vo)
+
+F(Vo) = { fs :
+    HOGA 物理守卫通过,
+    阶数验收通过（H31/H63）,
+    CCM 分支存在,
+    max_j |io_j| ≤ 14 A,
+    min_ℓ i_comm,ℓ ≥ 1.40019 A,
+    210 kHz ≤ fs ≤ 340 kHz }                           (2)</code></pre>
+<h3 id="2-1-各项约束的来源">2.1 各项约束的来源</h3>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">约束</th>
+<th class="align-left">来源</th>
+<th class="align-left">性质</th>
+<th class="align-left">不能写成</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">HOGA 守卫</td>
+<td class="align-left">电流零和、<code>Cp</code> 钳位残差、能量闭合、二极管反向电流等</td>
+<td class="align-left">数值/物理必要条件</td>
+<td class="align-left">“硬件安全”</td>
+</tr>
+<tr>
+<td class="align-left">阶数验收</td>
+<td class="align-left">H31/H63 谱残差、周期闭合、事件结构等</td>
+<td class="align-left">数值精度门槛</td>
+<td class="align-left">“模型无误”</td>
+</tr>
+<tr>
+<td class="align-left">CCM</td>
+<td class="align-left">选定导通分支</td>
+<td class="align-left">模型适用域</td>
+<td class="align-left">“DCM 不存在”</td>
+</tr>
+<tr>
+<td class="align-left">14 A</td>
+<td class="align-left">研究情景</td>
+<td class="align-left">统一比较标尺</td>
+<td class="align-left">“器件额定/热限额”</td>
+</tr>
+<tr>
+<td class="align-left">1.40019 A</td>
+<td class="align-left"><code>Qreq/teff</code></td>
+<td class="align-left">必要能力代理</td>
+<td class="align-left">“ZVS 认证”</td>
+</tr>
+<tr>
+<td class="align-left">210–340 kHz</td>
+<td class="align-left">搜索窗口</td>
+<td class="align-left">研究设置</td>
+<td class="align-left">“硬件允许范围”</td>
+</tr>
+</tbody></table></div>
+<blockquote><strong>版本说明</strong>：AOC 搜索沿用 <strong>V2.2 研究快照</strong>（与旧 AOC 同方程），没有切换到来源 V2.3。本文中的“HOGA”指该快照；不要写成“用 V2.3 求解”或“已升级到 V2.3”。V2.3 的方程/审计是另一条证据链。</blockquote>
+<h3 id="2-2-换流代理的算法">2.2 换流代理的算法</h3>
+<pre class="code"><code class="language-text">Qreq = 2 × Qoss(50 V) = 2 × 55.505 nC = 111.010 nC
+teff = 79.281831 ns        （100 ns 命令死区 − RC 门极有效延迟）
+Icomm,min = Qreq / teff = 1.4001947 A</code></pre>
+<ul>
+<li><code>Qoss(50 V)</code> 来自 IPP70N10S3L-12 手册图 10 的 19 锚点分段线性积分；单管 55.505 nC、1.039904 μJ；</li>
+<li>对称桥臂完整换流需要两只 MOS 的电荷，故乘 2；</li>
+<li><code>teff</code> 由 0/10 V 门极命令、14.945 ns RC、2 V 阈值推得；</li>
+<li>该代理只筛“电荷够不够”，不证明“开通前 <code>Vds</code> 到零”。</li>
+</ul>
+<hr>
+<h2 id="3-怎么得到-59-节点">3 怎么得到 59 节点</h2>
+<h3 id="3-1-搜索流程-按时间">3.1 搜索流程（按时间）</h3>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">步骤</th>
+<th class="align-left">做什么</th>
+<th class="align-left">结果</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">1</td>
+<td class="align-left">复用既有 423 个通过守卫的 HOGA 点</td>
+<td class="align-left">基础网格</td>
+</tr>
+<tr>
+<td class="align-left">2</td>
+<td class="align-left">扩域 377 条、模态恢复 88 条、局部频率加密 261 条</td>
+<td class="align-left">含失败与不同验收层级的记录</td>
+</tr>
+<tr>
+<td class="align-left">3</td>
+<td class="align-left">线性频率插值检查</td>
+<td class="align-left">发现轻微 14 A 越界、模态/求解失败 → 放弃插值</td>
+</tr>
+<tr>
+<td class="align-left">4</td>
+<td class="align-left">改为 20 个独立电压区间，每区间固定频率；两端+中点三点核验</td>
+<td class="align-left">20 段实施表，准静态 2.184381 ms</td>
+</tr>
+<tr>
+<td class="align-left">5</td>
+<td class="align-left">逐节点候选在 254 V 出现 251.064 kHz 尖峰</td>
+<td class="align-left">用 293 V 解作初值，恢复低频分支</td>
+</tr>
+<tr>
+<td class="align-left">6</td>
+<td class="align-left">215–293 V 改直线频率桥，每 1.95 V 检查，共 41 点</td>
+<td class="align-left">41 点全通过；最大相峰值 13.999485 A</td>
+</tr>
+<tr>
+<td class="align-left">7</td>
+<td class="align-left">41 新点 + 18 保留节点 = 59 节点</td>
+<td class="align-left">最终表 <code>aoc_smooth254_59_nodes.csv</code></td>
+</tr>
+</tbody></table></div>
+<h3 id="3-2-20-段实施表-中间产物">3.2 20 段实施表（中间产物）</h3>
+<ul>
+<li>每区间一个固定频率，先取相邻最优频率上包络的 100 Hz 取整，再按需小幅升频或回退 280/290/300 kHz；</li>
+<li>每选中频率核验区间两端 + 中点，共 60 次（H63 48 次、H15 11 次、H31 1 次；其中 12 次复用原阶数验收）；</li>
+<li>最大相峰值 13.999454 A，最小换流代理 1.453460 A；</li>
+<li>准静态 20→800 V <strong>2.184381 ms</strong>（比旧窗口 2.544446 ms 快 14.151%）；</li>
+<li>比逐节点候选保守约 4.095%。</li>
+</ul>
+<blockquote>20 段表是<strong>保守实施参考</strong>，不是最终验证轨迹。最终动态与 20 点验证用的是 59 节点表。两者不要混。</blockquote>
+<h3 id="3-3-254-v-修订">3.3 254 V 修订</h3>
+<p>原逐节点候选在 254 V 取 251.0643 kHz，曲线出现向上尖峰；原因是保留的 245/250 kHz 解未通过代数闭合（事件残差约 0.0237/0.00898），不是物理不可行。修订：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">254 V 版本</th>
+<th class="align-right"><code>fs</code> / kHz</th>
+<th class="align-right"><code>Io</code> / A</th>
+<th class="align-right"><code>Ipk</code> / A</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">原候选</td>
+<td class="align-right">251.0643</td>
+<td class="align-right">1.544274</td>
+<td class="align-right">12.536473</td>
+</tr>
+<tr>
+<td class="align-left">恢复分支后重新求优</td>
+<td class="align-right">243.894287</td>
+<td class="align-right">1.753569</td>
+<td class="align-right">13.999924</td>
+</tr>
+<tr>
+<td class="align-left">连续路径参考（最终采用）</td>
+<td class="align-right">244.273450</td>
+<td class="align-right">1.740951</td>
+<td class="align-right">13.911246</td>
+</tr>
+</tbody></table></div>
+<p>直线桥：</p>
+<pre class="code"><code class="language-text">fs(Vo) = 244614.9 + (243932.0 − 244614.9)·(Vo − 215)/78   [Hz]</code></pre>
+<ul>
+<li>适用 215 ≤ Vo ≤ 293 V；</li>
+<li>41 个检查点全部通过 H31/H63、代数闭合、物理守卫、CCM、14 A、换流代理；</li>
+<li>254 V 处 <code>Io</code> 比原候选提高 12.7359%；</li>
+<li>该段最大相峰值 13.999485 A、最小换流代理 9.853760 A；</li>
+<li>采样通过不等于连续域证明。</li>
+</ul>
+<h3 id="3-4-最终表的构成">3.4 最终表的构成</h3>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">来源</th>
+<th class="align-right">节点数</th>
+<th class="align-left">说明</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">215–293 V 新增局部点</td>
+<td class="align-right">41</td>
+<td class="align-left">每 1.95 V 一个</td>
+</tr>
+<tr>
+<td class="align-left">其他保留原节点</td>
+<td class="align-right">18</td>
+<td class="align-left">20/59/98/137/176/332/371/410/449/488/527/566/605/644/683/722/761/800 V</td>
+</tr>
+<tr>
+<td class="align-left"><strong>合计</strong></td>
+<td class="align-right"><strong>59</strong></td>
+<td class="align-left">加 0–20 V 的 300 kHz 启动段，共 61 个查表断点</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h2 id="4-最终表长什么样">4 最终表长什么样</h2>
+<h3 id="4-1-关键统计">4.1 关键统计</h3>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">量</th>
+<th class="align-right">值</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">节点数</td>
+<td class="align-right">59</td>
+</tr>
+<tr>
+<td class="align-left">频率范围</td>
+<td class="align-right"><strong>241.5905–299.2573 kHz</strong></td>
+</tr>
+<tr>
+<td class="align-left">相峰值最大</td>
+<td class="align-right"><strong>13.99995 A</strong>（59 V 节点；距 14 A 仅 0.00005 A，属贴线）</td>
+</tr>
+<tr>
+<td class="align-left">换流代理最小</td>
+<td class="align-right"><strong>1.43999 A</strong>（683 V 节点；阈值 1.40019 A，余量约 2.8%）</td>
+</tr>
+<tr>
+<td class="align-left"><code>Io</code> 范围</td>
+<td class="align-right">1.85547 A（20 V）→ 0.79996 A（800 V）</td>
+</tr>
+<tr>
+<td class="align-left">准静态 20→800 V</td>
+<td class="align-right"><strong>2.089438 ms</strong></td>
+</tr>
+<tr>
+<td class="align-left">0–20 V 启动</td>
+<td class="align-right">300 kHz，约 65.456 μs（M2 诊断值）</td>
+</tr>
+<tr>
+<td class="align-left">动态 <code>t800</code>（M1）</td>
+<td class="align-right"><strong>2.153487 ms</strong></td>
+</tr>
+</tbody></table></div>
+<h3 id="4-2-轨迹形态-写作重点">4.2 轨迹形态（写作重点）</h3>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">区段</th>
+<th class="align-left">行为</th>
+<th class="align-left">原因</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">0–20 V</td>
+<td class="align-left">300 kHz 固定</td>
+<td class="align-left">零压启动，不把主段模型用于 <code>Vo≈0</code></td>
+</tr>
+<tr>
+<td class="align-left">20–215 V</td>
+<td class="align-left">约 243.6–244.6 kHz，几乎平台</td>
+<td class="align-left">低压段电流受限，低频率换大 <code>Io</code>；相峰值贴 14 A</td>
+</tr>
+<tr>
+<td class="align-left">215–293 V</td>
+<td class="align-left">244.61→243.93 kHz 缓降</td>
+<td class="align-left">254 V 修订后的直线桥；避免尖峰</td>
+</tr>
+<tr>
+<td class="align-left">293–371 V</td>
+<td class="align-left">243.9→241.59 kHz</td>
+<td class="align-left">全表最低频点在 371 V；仍受电流/换流约束</td>
+</tr>
+<tr>
+<td class="align-left">371–410 V</td>
+<td class="align-left"><strong>跳变</strong> 241.59→272.27 kHz</td>
+<td class="align-left">模态/整流分支切换；不能画成连续升频</td>
+</tr>
+<tr>
+<td class="align-left">410–527 V</td>
+<td class="align-left">272→280 kHz</td>
+<td class="align-left">高压段逐步升频</td>
+</tr>
+<tr>
+<td class="align-left">527–566 V</td>
+<td class="align-left">280.0→279.0 kHz（轻微回落）</td>
+<td class="align-left">非单调；保留实际记录，不人为平滑</td>
+</tr>
+<tr>
+<td class="align-left">566–800 V</td>
+<td class="align-left">279→299.26 kHz</td>
+<td class="align-left">接近频率上限，相峰值回升到 13.55 A</td>
+</tr>
+</tbody></table></div>
+<blockquote><strong>不要画成一条单调光滑曲线。</strong> 最终轨迹是“低频率大电流 + 371 V 最低点 + 410 V 分支跳变 + 高压升频”的分段形态。非单调不是错误，是三相模态/整流事件造成的。</blockquote>
+<h3 id="4-3-图">4.3 图</h3>
+<ul>
+<li><code>figures/01_revised_voltage_time.png</code>：20→800 V 准静态电压轨迹，2.089 ms；</li>
+<li><code>figures/02_revised_current_time.png</code>：输出电流 vs 时间；</li>
+<li><code>figures/03_revised_frequency_time.png</code>：<code>fs</code> vs 时间（可见 371 V 低谷、410 V 跳变）；</li>
+<li><code>figures/04_local_frequency_comparison.png</code>、<code>05_local_current_comparison.png</code>：254 V 局部对比。</li>
+</ul>
+<p>这些图是<strong>准静态重建</strong>，不是开关级动态波形。图注必须写明。</p>
+<hr>
+<h2 id="5-控制实现">5 控制实现</h2>
+<h3 id="5-1-结构">5.1 结构</h3>
+<pre class="code"><code class="language-text">Vo → 1-D 查表（61 断点，Flat）→ fs
+   → ×2π → 相位积分器 θ
+   → sin(θ), sin(θ−120°), sin(θ−240°)
+   → 门极掩码（M1 为零死区；M2 另加 100 ns 命令死区）
+   → 六路驱动</code></pre>
+<ul>
+<li>三相共用同一个相位积分器，频率切换时相位连续；</li>
+<li>查表区间内<strong>不插值</strong>（Flat），保留检查过的分支；</li>
+<li>到 800 V：<code>q[k+1] = q[k] OR (Vo[k] ≥ 800)</code>，锁存后封锁六路驱动；</li>
+<li>锁存后模型继续求解，保留残余能量与过冲；没有自动重启。</li>
+</ul>
+<h3 id="5-2-它不是什么">5.2 它不是什么</h3>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">容易误解</th>
+<th class="align-left">实际</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">“实现了 AOC 在线控制器”</td>
+<td class="align-left">只是离线 <code>fs(Vo)</code> 前馈表；没有 <code>Iref</code> 在线求解</td>
+</tr>
+<tr>
+<td class="align-left">“有电流 PI”</td>
+<td class="align-left">没有；<code>Iref</code> 只作为表内记录，不进入闭环</td>
+</tr>
+<tr>
+<td class="align-left">“有 ZVS 闭环保护”</td>
+<td class="align-left">没有；14 A/换流代理只在离线筛选时用</td>
+</tr>
+<tr>
+<td class="align-left">“有 800 V 恒压/Burst”</td>
+<td class="align-left">没有；只有锁存停充</td>
+</tr>
+<tr>
+<td class="align-left">“频率连续可调”</td>
+<td class="align-left">查表是阶梯；215–293 V 表内点较密，但仍是离散</td>
+</tr>
+</tbody></table></div>
+<h3 id="5-3-动态模型的实际设置">5.3 动态模型的实际设置</h3>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">项</th>
+<th class="align-left">值</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">模型</td>
+<td class="align-left"><code>AOC_charge.slx</code>（<code>ideal_three_phase_LCC</code> 副本）</td>
+</tr>
+<tr>
+<td class="align-left">求解器</td>
+<td class="align-left">ode15s，RelTol 2e-7、AbsTol 2e-9</td>
+</tr>
+<tr>
+<td class="align-left">MaxStep</td>
+<td class="align-left"><code>1/(200·299257)</code> s</td>
+</tr>
+<tr>
+<td class="align-left">StopTime</td>
+<td class="align-left">3.5 ms</td>
+</tr>
+<tr>
+<td class="align-left">器件</td>
+<td class="align-left"><code>Ron = 1e-6 Ω</code>、<code>Vf = 0.6 V</code>、<code>Goff = 1e-11 S</code>、<code>td = 0</code>、<code>Coss = 0</code></td>
+</tr>
+<tr>
+<td class="align-left">死区</td>
+<td class="align-left"><strong>0</strong>（该模型）；100 ns 只在器件近似模型里</td>
+</tr>
+<tr>
+<td class="align-left">结果</td>
+<td class="align-left"><code>t800 = 2.153487 ms</code>；3.5 ms 末值 800.112 V</td>
+</tr>
+<tr>
+<td class="align-left">完全理想器件</td>
+<td class="align-left"><code>t800 = 2.151012 ms</code></td>
+</tr>
+</tbody></table></div>
+<blockquote>这就是 M1 层。它比 M2（100 ns + Coss + Cj）轻，不能拿它的 <code>t800</code> 与 M2 的 2.572428 ms 比。</blockquote>
+<hr>
+<h2 id="6-结果">6 结果</h2>
+<h3 id="6-1-准静态">6.1 准静态</h3>
+<pre class="code"><code class="language-text">T20→800 = 2.089438 ms
+t20     = 0.065456 ms（M2 共同启动诊断值，仅作量级核对）
+合计    ≈ 2.154894 ms</code></pre>
+<p>与 M1 动态 <code>t800 = 2.153487 ms</code> 相差约 <strong>0.065%</strong>，说明“逐点冻结 + 电压域积分”在该轨迹上与动态结果量级自洽。注意：<code>t20</code> 取的是 M2 的诊断值，不是 M1 的严格同层启动时间，因此这只是量级核对，不是严格误差预算。</p>
+<h3 id="6-2-动态-m1">6.2 动态（M1）</h3>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">表</th>
+<th class="align-right"><code>t800</code> / ms</th>
+<th class="align-right">相对旧表</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">旧 21 节点 280–299 kHz</td>
+<td class="align-right">2.596206</td>
+<td class="align-right">—</td>
+</tr>
+<tr>
+<td class="align-left"><strong>最终 59 节点</strong></td>
+<td class="align-right"><strong>2.153487</strong></td>
+<td class="align-right"><strong>−17.05%</strong></td>
+</tr>
+<tr>
+<td class="align-left">最终 59 节点（M0 全理想）</td>
+<td class="align-right">2.151012</td>
+<td class="align-right">−17.15%</td>
+</tr>
+</tbody></table></div>
+<ul>
+<li>这是<strong>同模型、同口径</strong>的对比；</li>
+<li>不能写成“相对 HCC–CP 提高 17.05%”；</li>
+<li>不能与文献 1.82/1.62 s 比“快多少倍”。</li>
+</ul>
+<h3 id="6-3-20-点模型精度">6.3 20 点模型精度</h3>
+<p>见 <a href="04_validation.html"><code>04_validation.md</code></a>。摘要：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">指标 MAPE</th>
+<th class="align-right">HOGA-H49</th>
+<th class="align-right">EDF</th>
+<th class="align-right">FHA</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">RMS</td>
+<td class="align-right">0.00391%</td>
+<td class="align-right">0.391%</td>
+<td class="align-right">13.027%</td>
+</tr>
+<tr>
+<td class="align-left"><code>Io</code></td>
+<td class="align-right">0.00566%</td>
+<td class="align-right">0.349%</td>
+<td class="align-right">10.921%</td>
+</tr>
+<tr>
+<td class="align-left">峰值</td>
+<td class="align-right">0.0270%</td>
+<td class="align-right">1.573%</td>
+<td class="align-right">13.784%</td>
+</tr>
+<tr>
+<td class="align-left">NRMSE</td>
+<td class="align-right">0.0307%</td>
+<td class="align-right">2.138%</td>
+<td class="align-right">23.851%</td>
+</tr>
+</tbody></table></div>
+<blockquote>这是<strong>模型精度</strong>，不是控制精度，也不是硬件精度。</blockquote>
+<hr>
+<h2 id="7-与旧版-中间版的量化关系">7 与旧版/中间版的量化关系</h2>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">版本</th>
+<th class="align-left">频率范围</th>
+<th class="align-left">节点/区间</th>
+<th class="align-right">准静态 20→800 V</th>
+<th class="align-right">M1 动态</th>
+<th class="align-left">状态</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">旧 21 节点</td>
+<td class="align-left">280–299 kHz</td>
+<td class="align-left">21 节点</td>
+<td class="align-right">2.544446 ms</td>
+<td class="align-right">2.596206 ms</td>
+<td class="align-left">历史对照</td>
+</tr>
+<tr>
+<td class="align-left">20 段实施表</td>
+<td class="align-left">243.7–299.3 kHz</td>
+<td class="align-left">20 区间</td>
+<td class="align-right">2.184381 ms</td>
+<td class="align-right">未跑</td>
+<td class="align-left">中间保守参考</td>
+</tr>
+<tr>
+<td class="align-left">逐节点候选</td>
+<td class="align-left">241.59–299.26 kHz</td>
+<td class="align-left">21 节点（254 V 前）</td>
+<td class="align-right">2.098458 ms</td>
+<td class="align-right">未跑</td>
+<td class="align-left">中间候选</td>
+</tr>
+<tr>
+<td class="align-left"><strong>最终 59 节点</strong></td>
+<td class="align-left"><strong>241.59–299.26 kHz</strong></td>
+<td class="align-left"><strong>59 节点</strong></td>
+<td class="align-right"><strong>2.089438 ms</strong></td>
+<td class="align-right"><strong>2.153487 ms</strong></td>
+<td class="align-left"><strong>最终</strong></td>
+</tr>
+</tbody></table></div>
+<ul>
+<li>旧→新准静态：<code>1 − 2.089438/2.544446 = 17.882%</code>；</li>
+<li>旧→新动态：<code>1 − 2.153487/2.596206 = 17.053%</code>；</li>
+<li>20 段→逐节点候选：<code>1 − 2.098458/2.184381 = 3.935%</code>（报告写“约 4.095%”，是反向 <code>1 − 2.184381/2.098458</code> 的分段代价口径）；</li>
+<li>20 段→59 节点：<code>1 − 2.089438/2.184381 = 4.347%</code>（不同对照，不能与 4.095% 直接混用）。</li>
+</ul>
+<blockquote>只在同一列内比较；不要跨列构造“总提升”。</blockquote>
+<hr>
+<h2 id="8-最终版仍然缺什么">8 最终版仍然缺什么</h2>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">缺口</th>
+<th class="align-left">现状</th>
+<th class="align-left">影响</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">M2 全程</td>
+<td class="align-left">59 节点表没有在 100 ns + Coss + Cj 模型跑过</td>
+<td class="align-left">不能写“最终轨迹通过器件约束”</td>
+</tr>
+<tr>
+<td class="align-left">800 V 末端共同可行</td>
+<td class="align-left">M2 下 7 个离散频点无同时满足 14 A 与残压者</td>
+<td class="align-left">不能写“末端可行”；290–295 kHz 未连续精查</td>
+</tr>
+<tr>
+<td class="align-left">14 A 依据</td>
+<td class="align-left">研究情景</td>
+<td class="align-left">不能写“器件安全/热限额”</td>
+</tr>
+<tr>
+<td class="align-left">1.40019 A 代理</td>
+<td class="align-left"><code>Qreq/teff</code></td>
+<td class="align-left">不能写“ZVS 已实现”</td>
+</tr>
+<tr>
+<td class="align-left">连续域证明</td>
+<td class="align-left">离散 HOGA + 局部加密</td>
+<td class="align-left">不能写“全局最优/连续域无解”</td>
+</tr>
+<tr>
+<td class="align-left">闭环</td>
+<td class="align-left">开环查表</td>
+<td class="align-left">不能写“AOC 控制器/电流 PI”</td>
+</tr>
+<tr>
+<td class="align-left">损耗/温升</td>
+<td class="align-left">未对最终表积分</td>
+<td class="align-left">不能写“效率提升/温升降低”</td>
+</tr>
+<tr>
+<td class="align-left">硬件</td>
+<td class="align-left">无</td>
+<td class="align-left">不能写“实验验证”</td>
+</tr>
+<tr>
+<td class="align-left">参数鲁棒性</td>
+<td class="align-left">无最终表的 ±Cp/±Cs 扫描</td>
+<td class="align-left">不能写“工程鲁棒”</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h2 id="9-写作时建议的-一句话定位">9 写作时建议的“一句话定位”</h2>
+<blockquote>本文不重新提出 AOC 方法，而是把 Qin 等“逐电压点最大化可行输出电流”的思想离散化到三相 Δ/Y LCC 的 HOGA 周期模型上，构造一条 59 节点的离线 <code>fs(Vo)</code> 查表轨迹；该轨迹在 14 A 相峰值情景、HOGA 守卫/阶数/CCM、换流电荷代理与 210–340 kHz 窗口内逐点筛选，并用冻结 <code>Vo</code> 的 20 点 Simulink 参考验证了模型精度。它是开环前馈轨迹，不是原论文的在线电流闭环，也未经过器件近似模型的全程验收或硬件实验。</blockquote>
+<hr>
+<p><em>本文件整理自 <code>aoc_reoptimization_20261020/</code>、<code>AOC_control_retrofit.md</code>、<code>AOC_20point_accuracy_report.md</code> 与 <code>revision_summary.json</code>；未新增求解。最后更新：2026-10-25。</em></p>
+</article>
+</main>
+<footer class="footer">
+  <p>公开归档 · 代码 MIT · 原创文档 CC BY 4.0 · 原论文不随仓库分发 ·
+  <a href="https://github.com/sososoamazing/lcc-aoc-charging-strategy">GitHub</a> ·
+  <a href="https://sososoamazing.github.io/lcc-aoc-charging-strategy/">Pages</a></p>
+  <p>最后构建：2026-10-25。本页由 <code>tools/build_site.py</code> 从 Markdown 生成；如与源文件冲突，以源文件为准。</p>
+</footer>
+</body>
+</html>

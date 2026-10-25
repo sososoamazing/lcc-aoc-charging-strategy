@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>00 范围、版本政策与时间线 · 三相 LCC 电容充电电源 AOC 策略资料包</title>
+<meta name="description" content="50 V → 800 V 三相 Δ/Y LCC 的 AOC 策略梳理：Qin 2023 文献精读、最终 59 节点离线 fs(Vo) 轨迹、20 点验证、模型层级与论文写作边界。">
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="alternate" type="text/markdown" href="../ONE_PAGE.md">
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$','$'],['\(','\)']], displayMath: [['$$','$$'],['\[','\]']] },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner">
+  <a class="brand" href="../index.html">LCC<span>·</span>AOC</a>
+  <nav class="nav">
+    <a href="../index.html">总览</a>
+    <a href="../docs/01_paper_AOC_digest.html">文献</a>
+    <a href="../docs/03_project_AOC_final.html">最终轨迹</a>
+    <a href="../docs/04_validation.html">验证</a>
+    <a href="../docs/05_claims_and_boundaries.html">边界</a>
+    <a href="../docs/06_writing_guide.html">写作</a>
+    <a href="../docs/07_sources.html">来源</a>
+    <a href="../data/aoc_59_nodes.csv">数据</a>
+    <a href="https://github.com/sososoamazing/lcc-aoc-charging-strategy">GitHub</a>
+  </nav>
+</div></header>
+
+<main class="layout">
+<aside class="toc"><h3>本页目录</h3><a class="lvl2" href="#1-这个资料包解决什么问题">1 这个资料包解决什么问题</a><a class="lvl2" href="#2-两层对象">2 两层对象</a><a class="lvl3" href="#2-1-文献层-qin-等-2023-的-aoc">2.1 文献层：Qin 等 2023 的 AOC</a><a class="lvl3" href="#2-2-项目层-三相-δ-y-lcc-的-aoc-型离线查表轨迹">2.2 项目层：三相 Δ/Y LCC 的 AOC 型离线查表轨迹</a><a class="lvl2" href="#3-最终版政策">3 最终版政策</a><a class="lvl3" href="#3-1-为什么需要版本政策">3.1 为什么需要版本政策</a><a class="lvl3" href="#3-2-本包的-最终版-定义">3.2 本包的“最终版”定义</a><a class="lvl3" href="#3-3-历史版与最终版的关系">3.3 历史版与最终版的关系</a><a class="lvl2" href="#4-时间线-只列与-aoc-有关的节点">4 时间线（只列与 AOC 有关的节点）</a><a class="lvl2" href="#5-本包不包含什么">5 本包不包含什么</a><a class="lvl2" href="#6-推荐阅读顺序">6 推荐阅读顺序</a><a class="lvl3" href="#人类-30-60-分钟">人类（30–60 分钟）</a><a class="lvl3" href="#chatgpt-网页端">ChatGPT 网页端</a><a class="lvl2" href="#7-术语约定">7 术语约定</a></aside>
+<article class="content">
+<h1 id="00-范围-版本政策与时间线">00 范围、版本政策与时间线</h1>
+<h2 id="1-这个资料包解决什么问题">1 这个资料包解决什么问题</h2>
+<p>用户要在硕士学位论文里写“AOC 策略”这一部分，需要把项目里散落在文献汇报、PPT 讲稿、导师问答、复现报告、CSV/JSON 中的 AOC 内容收拢成<strong>一份可交给 ChatGPT 网页端阅读的最终版材料</strong>。因此本包只做三件事：</p>
+<ol>
+<li><strong>讲清文献</strong>：Qin 等 2023 的 AOC 到底做了什么、公式是什么、实验到哪一步、哪些话不能替它说。</li>
+<li><strong>讲清项目</strong>：本项目最终采用的 AOC 型轨迹是什么、怎么构造、结果多少、证据到哪一层。</li>
+<li><strong>给出写作边界</strong>：哪些句子可以写、哪些不能写、和论文既有章节怎么衔接。</li>
+</ol>
+<p>不改原模型、不重跑仿真、不新增实验。</p>
+<hr>
+<h2 id="2-两层对象">2 两层对象</h2>
+<h3 id="2-1-文献层-qin-等-2023-的-aoc">2.1 文献层：Qin 等 2023 的 AOC</h3>
+<ul>
+<li><strong>出处</strong>：M. Qin, W. Chen, A. Ye, F. Zhang, S. M. Goetz, F. Yang, Z. Yu, X. Yang, “Adaptive Optimization Charging Strategy for LCC Resonant Capacitor Charging Power Supply,” <em>IEEE Journal of Emerging and Selected Topics in Power Electronics</em>, vol. 11, no. 6, pp. 5675–5689, Dec. 2023. DOI: <a href="https://doi.org/10.1109/JESTPE.2023.3301738">10.1109/JESTPE.2023.3301738</a>.</li>
+<li><strong>一句话</strong>：在 <code>Imax</code>、ZVS、频率上下限约束下，随 <code>Uo</code> 实时求最大可行 <code>Io</code> 参考，经电流 PI 实施；单相 2174 W 样机在相同 <code>Imax</code> 下把 720 V 充电时间从 1.82 s 降到 1.62 s。</li>
+<li><strong>性质</strong>：单相、在线闭环、有实验。它是本项目的方法来源，不是本项目的成果。</li>
+</ul>
+<h3 id="2-2-项目层-三相-δ-y-lcc-的-aoc-型离线查表轨迹">2.2 项目层：三相 Δ/Y LCC 的 AOC 型离线查表轨迹</h3>
+<ul>
+<li><strong>对象</strong>：50 V→800 V、3.125 μF（1 J）、Ls 4.7 μH、Cs 135 nF、ΔCp 27 nF/边、三台 1:4、共用六二极管桥。</li>
+<li><strong>一句话</strong>：用 HOGA 冻结 <code>Vo</code> 的周期模型逐电压点搜索最大平均整流电流，在 14 A 相峰值、HOGA 守卫/阶数/CCM、换流电荷代理、210–340 kHz 约束下，生成 <strong>59 节点 <code>fs(Vo)</code> 表</strong>；控制实现是开环频率前馈 + 连续相位 + 800 V 锁存。</li>
+<li><strong>性质</strong>：三相、离线查表、只有仿真。它借鉴 AOC 的目标，但没有实现原论文的在线电流参考求解与电流 PI。</li>
+</ul>
+<blockquote>论文写作中最重要的区分：<strong>“AOC 思想”可以迁移，“AOC 控制器”没有实现。</strong></blockquote>
+<hr>
+<h2 id="3-最终版政策">3 最终版政策</h2>
+<h3 id="3-1-为什么需要版本政策">3.1 为什么需要版本政策</h3>
+<p>AOC 相关材料在 2026-10-17 至 2026-10-24 之间经过多轮迭代：</p>
+<ul>
+<li>文献汇报 PPT 有 v1–v6，最终交付是 v6（<code>release-final</code>）；</li>
+<li>AOC 轨迹先有 21 节点 280–299 kHz 表，再有 20 段实施表，最后是 59 节点平滑表；</li>
+<li>验证先有 10 点，后有 20 点；</li>
+<li>充电时间有 2.572428 ms（21 节点 + 器件近似模型）、2.596206 ms（21 节点 + 理想开关）、2.153487 ms（59 节点 + 理想开关）、2.089438 ms（59 节点准静态）等多个口径。</li>
+</ul>
+<p>如果不声明版本，最容易犯的错是<strong>把不同模型层级的数字放进同一张对比表</strong>。</p>
+<h3 id="3-2-本包的-最终版-定义">3.2 本包的“最终版”定义</h3>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">内容</th>
+<th class="align-left">最终版</th>
+<th class="align-left">说明</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">文献阅读结论</td>
+<td class="align-left">2026-10-20 <code>release-final</code> 7 页稿 + 逐页讲稿 + 导师问答</td>
+<td class="align-left">v6 为最终稿；v1–v5 只作过程记录</td>
+</tr>
+<tr>
+<td class="align-left">AOC 轨迹</td>
+<td class="align-left"><strong>59 节点 <code>aoc_smooth254_59_nodes.csv</code></strong>（2026-10-20）</td>
+<td class="align-left">41 个 215–293 V 局部点 + 18 个保留节点</td>
+</tr>
+<tr>
+<td class="align-left">轨迹验证</td>
+<td class="align-left"><strong>20 点 HOGA-H49 验证</strong>（2026-10-24）</td>
+<td class="align-left">10 点 v1 已被 20 点取代</td>
+</tr>
+<tr>
+<td class="align-left">动态充电</td>
+<td class="align-left"><strong><code>AOC_charge.slx</code> 理想开关 + Vf=0.6 V 的 <code>t800 = 2.153487 ms</code></strong></td>
+<td class="align-left">同模型旧 21 节点表为 2.596206 ms</td>
+</tr>
+<tr>
+<td class="align-left">器件近似模型证据</td>
+<td class="align-left"><strong>旧 21 节点表的 M2 结果</strong>（2.572428 ms、14.28 A、4 次启动残压失败）</td>
+<td class="align-left">仍是有效历史对照，但<strong>不是最终 59 节点表的结果</strong></td>
+</tr>
+<tr>
+<td class="align-left">论文草稿</td>
+<td class="align-left">2026-10-19 合排稿 §4.1.3（21 节点）</td>
+<td class="align-left">本包给出改写骨架，不直接改 docx</td>
+</tr>
+</tbody></table></div>
+<h3 id="3-3-历史版与最终版的关系">3.3 历史版与最终版的关系</h3>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">版本</th>
+<th class="align-left">时间</th>
+<th class="align-left">内容</th>
+<th class="align-left">状态</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">21 节点 280–299 kHz 表</td>
+<td class="align-left">2026-10-17</td>
+<td class="align-left">原 AOC 查表，21 个电压节点；14/21 节点取下限 280 kHz</td>
+<td class="align-left"><strong>历史对照</strong>；被 59 节点表取代</td>
+</tr>
+<tr>
+<td class="align-left">20 段实施表</td>
+<td class="align-left">2026-10-20</td>
+<td class="align-left">20 个电压区间、每区间固定频率；准静态 2.184381 ms</td>
+<td class="align-left"><strong>中间实施参考</strong>；比逐节点候选保守约 4.1%</td>
+</tr>
+<tr>
+<td class="align-left">逐节点候选</td>
+<td class="align-left">2026-10-20</td>
+<td class="align-left">扩域 + 局部加密；准静态 2.098458 ms</td>
+<td class="align-left">中间候选；254 V 有尖峰</td>
+</tr>
+<tr>
+<td class="align-left">254 V 局部修订</td>
+<td class="align-left">2026-10-20</td>
+<td class="align-left">恢复低频分支 + 215–293 V 直线桥；41 点复核；59 节点 2.089438 ms</td>
+<td class="align-left"><strong>最终轨迹的构造过程</strong></td>
+</tr>
+<tr>
+<td class="align-left">20 点验证</td>
+<td class="align-left">2026-10-24</td>
+<td class="align-left">H49/EDF/FHA 对 20 个冻结点</td>
+<td class="align-left"><strong>最终验证</strong></td>
+</tr>
+<tr>
+<td class="align-left">10 点验证</td>
+<td class="align-left">2026-10-24 前</td>
+<td class="align-left">10 个时间等分点；P04 无效</td>
+<td class="align-left">被 20 点取代</td>
+</tr>
+</tbody></table></div>
+<blockquote>“历史版”不是“错误版”。在自己的模型和口径内它们仍是可复核记录；本包保留它们的<strong>对照价值</strong>，但不把它们当最终结果。</blockquote>
+<hr>
+<h2 id="4-时间线-只列与-aoc-有关的节点">4 时间线（只列与 AOC 有关的节点）</h2>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">日期</th>
+<th class="align-left">事件</th>
+<th class="align-left">产物</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">2026-10-17</td>
+<td class="align-left">三相 HOGA/AOC 可行性验证启动</td>
+<td class="align-left"><code>aoc_feasibility_20261017/</code>：21 节点 AOC、14 A 情景、100 ns 死区、损耗代理</td>
+</tr>
+<tr>
+<td class="align-left">2026-10-18</td>
+<td class="align-left">器件近似模型三条全程轨迹</td>
+<td class="align-left">定频 2.940227 / 原 AOC 2.572428 / 400 V 候选 2.687160 ms；三者均超 14 A；启动各 4 次残压失败</td>
+</tr>
+<tr>
+<td class="align-left">2026-10-19</td>
+<td class="align-left">论文合排稿</td>
+<td class="align-left">§4.1.2 共同启动、§4.1.3 21 节点 AOC、§4.3.2 14 A 约束、§4.3.3 800 V 末端</td>
+</tr>
+<tr>
+<td class="align-left">2026-10-20</td>
+<td class="align-left">AOC 重优化</td>
+<td class="align-left">扩域 + 局部加密；20 段实施表 2.184381 ms；逐节点候选 2.098458 ms</td>
+</tr>
+<tr>
+<td class="align-left">2026-10-20</td>
+<td class="align-left">254 V 局部修订</td>
+<td class="align-left">恢复低频分支；215–293 V 直线桥；59 节点 2.089438 ms</td>
+</tr>
+<tr>
+<td class="align-left">2026-10-20</td>
+<td class="align-left">文献组会汇报定稿</td>
+<td class="align-left">7 页 PPT（v6）+ 讲稿 + 导师问答；文献层结论定稿</td>
+</tr>
+<tr>
+<td class="align-left">2026-10-24</td>
+<td class="align-left">59 节点表动态验证 + 20 点精度</td>
+<td class="align-left"><code>t800 = 2.153487 ms</code>；H49 <code>Io</code> MAPE 0.00566%；20/20 有效</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h2 id="5-本包不包含什么">5 本包不包含什么</h2>
+<ul>
+<li><strong>不包含原论文 PDF</strong>：IEEE 版权，公开仓库不分发。题录、DOI、逐节摘要与公式转写在 <code>docs/01</code>、<code>docs/02</code>。</li>
+<li><strong>不包含论文原图</strong>：Fig.2/4/5/10–14/23/25/27 的截图是论文版权图；本包只用文字与自绘/项目自生成图。</li>
+<li><strong>不包含原始 <code>.mat</code> 全波形、Simulink <code>.slx</code>、MATLAB 运行缓存</strong>：体积大且与写作无直接关系；需要时回原工作区。</li>
+<li><strong>不包含内部绝对路径与协作记录</strong>：公开仓库只保留可复现的相对路径与来源说明。</li>
+<li><strong>不包含 v1–v5 PPT、10 点旧报告、21 节点旧表的原始文件</strong>：只在版本表中说明；最终表与 20 点数据在 <code>data/</code>。</li>
+</ul>
+<hr>
+<h2 id="6-推荐阅读顺序">6 推荐阅读顺序</h2>
+<h3 id="人类-30-60-分钟">人类（30–60 分钟）</h3>
+<ol>
+<li><code>README.md</code>（5 分钟）</li>
+<li><code>ONE_PAGE.md</code>（10 分钟）</li>
+<li><code>docs/03_project_AOC_final.md</code>（15 分钟）</li>
+<li><code>docs/05_claims_and_boundaries.md</code>（10 分钟）</li>
+<li>需要写文献综述时再读 <code>docs/01_paper_AOC_digest.md</code></li>
+</ol>
+<h3 id="chatgpt-网页端">ChatGPT 网页端</h3>
+<ol>
+<li>先给 <code>ONE_PAGE.md</code> 的 raw URL；</li>
+<li>再给 <code>docs/06_writing_guide.md</code> 的 raw URL；</li>
+<li>按 <code>docs/06</code> 的提示词让它先出提纲和数值清单，确认后再写正文；</li>
+<li>如果它要引用具体公式，补 <code>docs/02_equations.md</code>；</li>
+<li>如果它要比较旧数据，补 <code>docs/04_validation.md</code> 的模型层级表。</li>
+</ol>
+<hr>
+<h2 id="7-术语约定">7 术语约定</h2>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">术语</th>
+<th class="align-left">本包含义</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">AOC</td>
+<td class="align-left">adaptive optimization charging，Qin 2023 的在线约束优化充电策略</td>
+</tr>
+<tr>
+<td class="align-left">原 AOC</td>
+<td class="align-left">项目里对“基于 HOGA 输出特性构造的选频轨迹”的历史称呼；不等于 Qin 2023 的完整控制器</td>
+</tr>
+<tr>
+<td class="align-left">最终 AOC / 59 节点表</td>
+<td class="align-left">2026-10-20 定稿、2026-10-24 验证的 <code>aoc_smooth254_59_nodes.csv</code></td>
+</tr>
+<tr>
+<td class="align-left">准静态</td>
+<td class="align-left">冻结 <code>Vo</code> 的周期解 + <code>Co∫dV/Io</code> 积分；不含量子化开关暂态</td>
+</tr>
+<tr>
+<td class="align-left">理想开关动态</td>
+<td class="align-left"><code>AOC_charge.slx</code> 的时域仿真；<code>Vf=0.6 V</code>、<code>Ron=1e-6</code>、无 Coss/Cj、无物理死区</td>
+</tr>
+<tr>
+<td class="align-left">器件近似模型</td>
+<td class="align-left">100 ns 命令死区、MOS 非线性 Coss、整流 Cj、RC 门极；用于残压/换流诊断</td>
+</tr>
+<tr>
+<td class="align-left">14 A</td>
+<td class="align-left">相电流峰值研究情景上限，不是器件额定</td>
+</tr>
+<tr>
+<td class="align-left">换流代理</td>
+<td class="align-left">100 ns 有效窗口内按方向取符号的相电流；1.40019 A 为筛选下限</td>
+</tr>
+<tr>
+<td class="align-left">M0/M1/M2/M3</td>
+<td class="align-left">见 <code>ONE_PAGE.md</code> 第 4 节与 <code>docs/04_validation.md</code></td>
+</tr>
+</tbody></table></div>
+<hr>
+<p><em>本文件是整理，不是新研究。最后更新：2026-10-25。</em></p>
+</article>
+</main>
+<footer class="footer">
+  <p>公开归档 · 代码 MIT · 原创文档 CC BY 4.0 · 原论文不随仓库分发 ·
+  <a href="https://github.com/sososoamazing/lcc-aoc-charging-strategy">GitHub</a> ·
+  <a href="https://sososoamazing.github.io/lcc-aoc-charging-strategy/">Pages</a></p>
+  <p>最后构建：2026-10-25。本页由 <code>tools/build_site.py</code> 从 Markdown 生成；如与源文件冲突，以源文件为准。</p>
+</footer>
+</body>
+</html>

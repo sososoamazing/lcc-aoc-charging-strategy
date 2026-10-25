@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>原创文档许可：CC BY 4.0 · 三相 LCC 电容充电电源 AOC 策略资料包</title>
+<meta name="description" content="50 V → 800 V 三相 Δ/Y LCC 的 AOC 策略梳理：Qin 2023 文献精读、最终 59 节点离线 fs(Vo) 轨迹、20 点验证、模型层级与论文写作边界。">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="alternate" type="text/markdown" href="ONE_PAGE.md">
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$','$'],['\(','\)']], displayMath: [['$$','$$'],['\[','\]']] },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner">
+  <a class="brand" href="index.html">LCC<span>·</span>AOC</a>
+  <nav class="nav">
+    <a href="index.html">总览</a>
+    <a href="docs/01_paper_AOC_digest.html">文献</a>
+    <a href="docs/03_project_AOC_final.html">最终轨迹</a>
+    <a href="docs/04_validation.html">验证</a>
+    <a href="docs/05_claims_and_boundaries.html">边界</a>
+    <a href="docs/06_writing_guide.html">写作</a>
+    <a href="docs/07_sources.html">来源</a>
+    <a href="data/aoc_59_nodes.csv">数据</a>
+    <a href="https://github.com/sososoamazing/lcc-aoc-charging-strategy">GitHub</a>
+  </nav>
+</div></header>
+
+<main class="layout">
+<aside class="toc"><h3>本页目录</h3><a class="lvl2" href="#例外">例外</a><a class="lvl2" href="#建议署名">建议署名</a></aside>
+<article class="content">
+<h1 id="原创文档许可-cc-by-4-0">原创文档许可：CC BY 4.0</h1>
+<p>本仓库中由本项目作者原创的文档、整理表、项目自生成图（包括 <code>docs/</code>、<code>ONE_PAGE.md</code>、<code>README.md</code>、<code>data/</code> 中的派生 CSV、<code>figures/</code> 中的项目自生成图）采用 <strong>Creative Commons Attribution 4.0 International (CC BY 4.0)</strong> 许可。</p>
+<p>你可以：</p>
+<ul>
+<li>共享：以任何媒介或格式复制、发行；</li>
+<li>改编：修改、转换、以原作品为基础创作；</li>
+</ul>
+<p>但必须：</p>
+<ul>
+<li><strong>署名</strong>：注明来源（本仓库名、URL、作者/项目名），并说明是否修改；</li>
+<li>不得暗示原作者为你或你的使用背书。</li>
+</ul>
+<p>许可全文：https://creativecommons.org/licenses/by/4.0/legalcode</p>
+<h2 id="例外">例外</h2>
+<ol>
+<li><strong>原论文</strong>：Qin 等 2023 年 IEEE JESTPE 论文的版权归 IEEE/作者；本仓库<strong>不分发 PDF、不分发论文原图</strong>。引用请用 DOI <code>10.1109/JESTPE.2023.3301738</code>。</li>
+<li><strong>代码/脚本</strong>：<code>tools/</code> 采用 MIT，见 <code>LICENSE</code>。</li>
+<li><strong>原项目报告中的数值/结论</strong>：本仓库只做公开归档与整理；如与原项目约定冲突，以原项目约定为准。</li>
+<li><strong>第三方器件手册/数据</strong>：权利归原厂商；本仓库只引用数值，不复制手册。</li>
+</ol>
+<h2 id="建议署名">建议署名</h2>
+<pre class="code"><code class="language-text">LCC AOC Strategy Dossier (2026).
+Three-phase LCC capacitor charger: AOC literature digest and final 59-node trajectory.
+https://github.com/sososoamazing/lcc-aoc-charging-strategy
+Licensed under CC BY 4.0 (original docs/figures) / MIT (code).</code></pre>
+</article>
+</main>
+<footer class="footer">
+  <p>公开归档 · 代码 MIT · 原创文档 CC BY 4.0 · 原论文不随仓库分发 ·
+  <a href="https://github.com/sososoamazing/lcc-aoc-charging-strategy">GitHub</a> ·
+  <a href="https://sososoamazing.github.io/lcc-aoc-charging-strategy/">Pages</a></p>
+  <p>最后构建：2026-10-25。本页由 <code>tools/build_site.py</code> 从 Markdown 生成；如与源文件冲突，以源文件为准。</p>
+</footer>
+</body>
+</html>

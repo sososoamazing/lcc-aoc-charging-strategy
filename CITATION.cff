@@ -1,0 +1,45 @@
+cff-version: 1.2.0
+message: "If you use this dossier, please cite it as below."
+title: "Three-Phase LCC Capacitor Charger: AOC Strategy Dossier (Final Version)"
+abstract: "Literature digest of Qin et al. 2023 AOC for LCC capacitor chargers, plus the final 59-node offline fs(Vo) AOC-type trajectory for a 50 V to 800 V three-phase Delta/Y LCC capacitor charger, with model-layer metrics, evidence boundaries and a thesis-writing guide."
+type: software
+authors:
+  - name: "LCC AOC Strategy Dossier contributors"
+repository-code: "https://github.com/sososoamazing/lcc-aoc-charging-strategy"
+url: "https://sososoamazing.github.io/lcc-aoc-charging-strategy/"
+license: MIT
+keywords:
+  - three-phase LCC
+  - resonant converter
+  - capacitor charger
+  - adaptive optimization charging
+  - AOC
+  - CCPS
+  - power electronics
+references:
+  - type: article
+    title: "Adaptive Optimization Charging Strategy for LCC Resonant Capacitor Charging Power Supply"
+    authors:
+      - family-names: Qin
+        given-names: Mengjie
+      - family-names: Chen
+        given-names: Wenjie
+      - family-names: Ye
+        given-names: Aizhen
+      - family-names: Zhang
+        given-names: Fan
+      - family-names: Goetz
+        given-names: Stephan M.
+      - family-names: Yang
+        given-names: Fengtao
+      - family-names: Yu
+        given-names: Zheyuan
+      - family-names: Yang
+        given-names: Xu
+    journal: "IEEE Journal of Emerging and Selected Topics in Power Electronics"
+    volume: 11
+    issue: 6
+    start: 5675
+    end: 5689
+    year: 2023
+    doi: "10.1109/JESTPE.2023.3301738"

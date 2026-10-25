@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>01 文献精读：Qin 等 2023 的 AOC 策略 · 三相 LCC 电容充电电源 AOC 策略资料包</title>
+<meta name="description" content="50 V → 800 V 三相 Δ/Y LCC 的 AOC 策略梳理：Qin 2023 文献精读、最终 59 节点离线 fs(Vo) 轨迹、20 点验证、模型层级与论文写作边界。">
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="alternate" type="text/markdown" href="../ONE_PAGE.md">
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$','$'],['\(','\)']], displayMath: [['$$','$$'],['\[','\]']] },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner">
+  <a class="brand" href="../index.html">LCC<span>·</span>AOC</a>
+  <nav class="nav">
+    <a href="../index.html">总览</a>
+    <a href="../docs/01_paper_AOC_digest.html">文献</a>
+    <a href="../docs/03_project_AOC_final.html">最终轨迹</a>
+    <a href="../docs/04_validation.html">验证</a>
+    <a href="../docs/05_claims_and_boundaries.html">边界</a>
+    <a href="../docs/06_writing_guide.html">写作</a>
+    <a href="../docs/07_sources.html">来源</a>
+    <a href="../data/aoc_59_nodes.csv">数据</a>
+    <a href="https://github.com/sososoamazing/lcc-aoc-charging-strategy">GitHub</a>
+  </nav>
+</div></header>
+
+<main class="layout">
+<aside class="toc"><h3>本页目录</h3><a class="lvl2" href="#1-题录">1 题录</a><a class="lvl2" href="#2-研究问题与贡献">2 研究问题与贡献</a><a class="lvl3" href="#2-1-背景">2.1 背景</a><a class="lvl3" href="#2-2-三种传统充电曲线的浪费">2.2 三种传统充电曲线的浪费</a><a class="lvl3" href="#2-3-三条贡献-pdf-p-2">2.3 三条贡献（PDF p.2）</a><a class="lvl2" href="#3-crc-fha-为什么用-ir-而不是-it">3 CRC-FHA：为什么用 ir 而不是 iT</a><a class="lvl3" href="#3-1-传统-fha-的误差来源">3.1 传统 FHA 的误差来源</a><a class="lvl3" href="#3-2-论文的选择">3.2 论文的选择</a><a class="lvl3" href="#3-3-核心变量与关系-pdf-p-3-4-式-2-10-13">3.3 核心变量与关系（PDF p.3–4，式 (2)(10)–(13)）</a><a class="lvl3" href="#3-4-模型验证">3.4 模型验证</a><a class="lvl2" href="#4-三条约束与-a-点">4 三条约束与 A 点</a><a class="lvl3" href="#4-1-电流应力边界">4.1 电流应力边界</a><a class="lvl3" href="#4-2-zvs-边界">4.2 ZVS 边界</a><a class="lvl3" href="#4-3-频率范围">4.3 频率范围</a><a class="lvl3" href="#4-4-a-点-两条边界的交点">4.4 A 点：两条边界的交点</a><a class="lvl3" href="#4-5-式-20-的真实含义">4.5 式 (20) 的真实含义</a><a class="lvl2" href="#5-三阶段控制">5 三阶段控制</a><a class="lvl2" href="#6-实验-2174-w-单相样机">6 实验：2174 W 单相样机</a><a class="lvl3" href="#6-1-样机参数-pdf-p-10-11-table-iii">6.1 样机参数（PDF p.10–11，Table III）</a><a class="lvl3" href="#6-2-充电速度-pdf-p-11-12-fig-23">6.2 充电速度（PDF p.11–12，Fig.23）</a><a class="lvl3" href="#6-3-热-pdf-p-12-fig-25">6.3 热（PDF p.12，Fig.25）</a><a class="lvl3" href="#6-4-zvs-pdf-p-13-fig-27">6.4 ZVS（PDF p.13，Fig.27）</a><a class="lvl2" href="#7-论文自己承认-隐含的边界">7 论文自己承认/隐含的边界</a><a class="lvl2" href="#8-与文献对比时的正确说法">8 与文献对比时的正确说法</a><a class="lvl3" href="#可以写">可以写</a><a class="lvl3" href="#不能写">不能写</a><a class="lvl2" href="#9-与项目的接口">9 与项目的接口</a><a class="lvl2" href="#10-页码索引-便于回查-pdf">10 页码索引（便于回查 PDF）</a></aside>
+<article class="content">
+<h1 id="01-文献精读-qin-等-2023-的-aoc-策略">01 文献精读：Qin 等 2023 的 AOC 策略</h1>
+<blockquote>目的：让写作者在不打开 PDF 的情况下，准确复述论文的方法、公式、实验和边界。页码约定：<strong>PDF p.N</strong> 指本地 PDF 第 N 页；括号内为期刊页码（p.1 = 5675）。本文件是阅读摘要与公式转写，不是原文翻译；引用时请引 DOI，不要引本文件。</blockquote>
+<hr>
+<h2 id="1-题录">1 题录</h2>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">项</th>
+<th class="align-left">内容</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">题名</td>
+<td class="align-left">Adaptive Optimization Charging Strategy for LCC Resonant Capacitor Charging Power Supply</td>
+</tr>
+<tr>
+<td class="align-left">作者</td>
+<td class="align-left">Mengjie Qin, Wenjie Chen, Aizhen Ye, Fan Zhang, Stephan M. Goetz, Fengtao Yang, Zheyuan Yu, Xu Yang</td>
+</tr>
+<tr>
+<td class="align-left">单位</td>
+<td class="align-left">西安交通大学 电力设备电气绝缘国家重点实验室</td>
+</tr>
+<tr>
+<td class="align-left">期刊</td>
+<td class="align-left">IEEE Journal of Emerging and Selected Topics in Power Electronics</td>
+</tr>
+<tr>
+<td class="align-left">卷期</td>
+<td class="align-left">vol. 11, no. 6, pp. 5675–5689, Dec. 2023</td>
+</tr>
+<tr>
+<td class="align-left">DOI</td>
+<td class="align-left"><a href="https://doi.org/10.1109/JESTPE.2023.3301738">10.1109/JESTPE.2023.3301738</a></td>
+</tr>
+<tr>
+<td class="align-left">收稿/录用</td>
+<td class="align-left">2022-11-03 收稿；2023-03-29 修回；2023-07-14 录用；2023-08-03 在线；2023-12-01 当前版</td>
+</tr>
+<tr>
+<td class="align-left">基金</td>
+<td class="align-left">NSFC 51977175、52007150；国家重点研发 2020YFA0710500；中央高校 xhj032021006-01</td>
+</tr>
+<tr>
+<td class="align-left">开放获取</td>
+<td class="align-left">否（IEEE 订阅）；本仓库不分发 PDF</td>
+</tr>
+</tbody></table></div>
+<p><strong>BibTeX</strong></p>
+<pre class="code"><code class="language-bibtex">@article{Qin2023AOC,
+  author  = {Qin, Mengjie and Chen, Wenjie and Ye, Aizhen and Zhang, Fan and Goetz, Stephan M. and Yang, Fengtao and Yu, Zheyuan and Yang, Xu},
+  title   = {Adaptive Optimization Charging Strategy for {LCC} Resonant Capacitor Charging Power Supply},
+  journal = {IEEE Journal of Emerging and Selected Topics in Power Electronics},
+  year    = {2023},
+  volume  = {11},
+  number  = {6},
+  pages   = {5675--5689},
+  doi     = {10.1109/JESTPE.2023.3301738}
+}</code></pre>
+<hr>
+<h2 id="2-研究问题与贡献">2 研究问题与贡献</h2>
+<h3 id="2-1-背景">2.1 背景</h3>
+<p>重复脉冲功率负载（X 射线机、静电除尘、加速器、神经科学仪器、高压电容充电电源）中，<strong>充电时间占脉冲周期的大部分</strong>，脉冲重复率受充电速度限制。LCC 谐振变换器能利用变压器漏感 <code>Lr</code> 和寄生电容 <code>Cp</code> 作谐振元件，在开路/短路下可靠性高，是高压 CCPS 的主流拓扑（PDF p.1，§I）。</p>
+<h3 id="2-2-三种传统充电曲线的浪费">2.2 三种传统充电曲线的浪费</h3>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">策略</th>
+<th class="align-left">早期</th>
+<th class="align-left">末期</th>
+<th class="align-left">能力利用的问题</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">CC</td>
+<td class="align-left">电流恒定，<code>Im</code> 随 <code>Uo</code> 上升</td>
+<td class="align-left"><code>Im</code> 最大</td>
+<td class="align-left">末期先碰 <code>Imax</code>，<strong>前段能力没用足</strong></td>
+</tr>
+<tr>
+<td class="align-left">CP</td>
+<td class="align-left"><code>Io ≈ P/Uo</code> 很大</td>
+<td class="align-left">电流下降</td>
+<td class="align-left">初期先碰 <code>Imax</code>，<strong>后段能力闲置</strong></td>
+</tr>
+<tr>
+<td class="align-left">HCC–CP</td>
+<td class="align-left">恒流</td>
+<td class="align-left">恒功率</td>
+<td class="align-left">缓解两端极端，但分段折线仍不贴住每个电压点的可行上边界</td>
+</tr>
+</tbody></table></div>
+<p>作者的原话是：这些方法“to some extent improve the charging speed, but they still do not fully use the capacity of the converter”（PDF p.2，§I）。Fig.2 用 CC/CP 的 <code>Io</code>、<code>Im</code> 轨迹说明这一点（PDF p.1）。</p>
+<h3 id="2-3-三条贡献-pdf-p-2">2.3 三条贡献（PDF p.2）</h3>
+<ol>
+<li>提出基于连续谐振电流的 <strong>CRC-FHA</strong> 模型，建立不同开关频率下<strong>输出电流—电压增益</strong>的关系，并可分析电流应力与 ZVS 边界；</li>
+<li>基于 CRC-FHA 提出 <strong>AOC</strong>：以最大开关电流应力、ZVS 边界、频率上下限为约束，实时生成自适应参考电流，兼顾充电速度与全程 ZVS；</li>
+<li>建成 <strong>2174 W</strong> LCC 样机，实验显示充电速度提高 <strong>12%</strong>、全程实现 ZVS。</li>
+</ol>
+<blockquote>注意：贡献 3 的“12%”是结论段的取整；§V-B 的原始对比是 1.82 s→1.62 s，速度提高 <strong>12.35%</strong>。写作时用 12.35% 并注明算法。</blockquote>
+<hr>
+<h2 id="3-crc-fha-为什么用-ir-而不是-it">3 CRC-FHA：为什么用 <code>ir</code> 而不是 <code>iT</code></h2>
+<h3 id="3-1-传统-fha-的误差来源">3.1 传统 FHA 的误差来源</h3>
+<p>传统 FHA 常选变压器电流 <code>iT</code> 的基波。<code>iT</code> 在整流截止区间为零，是<strong>不连续</strong>波形，含大量谐波；且部分模型忽略 <code>uCp</code> 与 <code>iT</code> 的相位差。用它的基波等效，原波形与基波之间的误差大（PDF p.4–5，§II-B，Fig.9）。</p>
+<h3 id="3-2-论文的选择">3.2 论文的选择</h3>
+<p>论文选<strong>连续、近似正弦的谐振电流 <code>ir</code></strong>，同时保留 <code>uCp</code> 与 <code>ir</code> 的相位关系，建立 Fig.5 的等效网络。假设：</p>
+<ul>
+<li><code>ir(t) = Im sin(ωt)</code>，<code>Im</code> 为峰值；</li>
+<li>整流二极管每半周期导通角 <code>θ</code>；</li>
+<li>输出电压在若干开关周期内视为不变（准静态）；</li>
+<li>主要功率由基波传递；</li>
+<li>讨论范围限于 <strong>CCM</strong>。</li>
+</ul>
+<h3 id="3-3-核心变量与关系-pdf-p-3-4-式-2-10-13">3.3 核心变量与关系（PDF p.3–4，式 (2)(10)–(13)）</h3>
+<pre class="code"><code class="language-text">M  = Uo / (n Uin)                     归一化电压增益
+Fn = fs / fr                          归一化开关频率
+fr = 1 / (2π√(Lr Cr))                 谐振频率
+k  = Cp / Cr                          电容比
+ω  = 2π fs</code></pre>
+<pre class="code"><code class="language-text">ir(t) = Im sin(ωt)                                        (2)
+Io    = Im (1 − cosθ) / (nπ)                              (13)
+Im    = 2 ω Cp Uo / [n (1 + cosθ)]                        (12) 的等价形式</code></pre>
+<p><code>θ</code> 由 <code>M</code>、<code>Fn</code> 隐式决定。论文用 <code>k = 0.213</code> 的拟合式 (11) 把 <code>cosθ</code> 写成 <code>M</code>、<code>Fn</code> 的多项式，从而得到：</p>
+<pre class="code"><code class="language-text">Io = f(M, Fn),    Im = g(M, Fn)</code></pre>
+<p><strong>关键理解</strong>：相同 <code>Im</code> 不对应固定 <code>Io</code>；<code>Io</code> 还取决于 <code>θ</code>。<code>θ</code> 又随 <code>Uo</code>、<code>fs</code> 变化。所以“恒流”并不等于“恒应力”，AOC 才有优化空间。</p>
+<h3 id="3-4-模型验证">3.4 模型验证</h3>
+<p>Fig.10 把 CRC-FHA 预测的输出特性与仿真对比，曲线在工作范围内吻合（PDF p.6，§II-B）。这是<strong>模型验证</strong>，不是全参数域精度证明，也不是器件换流动态验证。</p>
+<blockquote>写作提醒：不要写成“CRC-FHA 在整个工作域都精确”。论文只给了所示范围内的对比；<code>k = 0.213</code> 的拟合式也不能外推到其他 <code>k</code>。</blockquote>
+<hr>
+<h2 id="4-三条约束与-a-点">4 三条约束与 A 点</h2>
+<h3 id="4-1-电流应力边界">4.1 电流应力边界</h3>
+<p>由式 (13)(14)：</p>
+<pre class="code"><code class="language-text">Io = Im (1 − cosθ)/(nπ) &lt; Imax (1 − cosθ)/(nπ)            (14)</code></pre>
+<p>把式 (11)(12) 代入，得到关于 <code>M</code>、<code>Fn</code> 的多项式不等式 (15)，其最小可行 <code>Fn</code> 记为 <strong><code>Fnmin1</code></strong>。物理含义：在给定 <code>Uo</code> 下，<code>fs</code> 不能太低，否则 <code>Im</code> 超过 <code>Imax</code>。</p>
+<h3 id="4-2-zvs-边界">4.2 ZVS 边界</h3>
+<p>论文的 ZVS 判据是<strong>输入电抗感性</strong>：</p>
+<pre class="code"><code class="language-text">Xin = ωLr − 1/(ωCr) + (θ − π − cosθ sinθ)/(πωCp) &gt; 0        (16)</code></pre>
+<p>把式 (11) 的 <code>cosθ(M,Fn)</code> 代入，化简为：</p>
+<pre class="code"><code class="language-text">kπ(Fn² − 1) + 0.4434 cos3θ − 2.031 cosθ − 1.571 &gt; 0          (17)</code></pre>
+<p>其最小可行 <code>Fn</code> 记为 <strong><code>Fnmin2</code></strong>。式 (19) 是式 (17) 代入 <code>cosθ</code> 后的展开多项式（论文给出具体系数），用于数值求解。</p>
+<p><strong>边界性质</strong>：式 (16) 是作者采用的<strong>近似判据</strong>。严格的工程 ZVS 还要检查死区内开关节点电容能否完成充放电、门极开通前 <code>Vds</code> 是否接近零。论文用实验波形（Fig.27）支持结论，但不是每个电压点都做了逐点实验。</p>
+<h3 id="4-3-频率范围">4.3 频率范围</h3>
+<pre class="code"><code class="language-text">1 &lt; Fn &lt; fmax / fr        (18)</code></pre>
+<p>即 <code>fr &lt; fs &lt; fmax</code>。下限保证 CCM；上限由开关/驱动能力决定。</p>
+<h3 id="4-4-a-点-两条边界的交点">4.4 A 点：两条边界的交点</h3>
+<p>Fig.11（PDF p.6）横轴 <code>M</code>、纵轴 <code>Io</code>：</p>
+<ul>
+<li>黑色虚线：<code>Imax</code> 允许的输出上限；</li>
+<li>蓝色虚线：<code>Xin &gt; 0</code> 的 ZVS 近似边界；</li>
+<li>红色轨迹：取两者中<strong>较低</strong>的输出上限，并受频率上下限限制。</li>
+</ul>
+<p><strong>A 点前</strong>：电压低、ZVS 余量较大，电流应力边界更紧 → 沿 <code>Imax</code> 边界，<code>Im</code> 接近 <code>Imax</code>。 <strong>A 点后</strong>：继续沿 <code>Imax</code> 会进入非感性区 → 改沿 ZVS 边界，<code>Io</code> 适当减小，<code>Im</code> 可低于 <code>Imax</code>。</p>
+<blockquote>这不是“恒流”也不是“恒功率”，而是<strong>逐电压点的约束最优</strong>。A 点后 <code>Im</code> 低于额定不等于控制保守，而是另一个约束先起作用。</blockquote>
+<h3 id="4-5-式-20-的真实含义">4.5 式 (20) 的真实含义</h3>
+<pre class="code"><code class="language-text">Fnmin = min{ fmax/fr , max(Fnmin1, Fnmin2) }        (20)</code></pre>
+<ul>
+<li>内层 <code>max</code>：两个下界同时满足，取较大者；A 点前由 <code>Fnmin1</code> 主导，A 点后由 <code>Fnmin2</code> 主导。</li>
+<li>外层 <code>min</code>：上限截断。</li>
+<li><strong>陷阱</strong>：若 <code>max(Fnmin1,Fnmin2) &gt; fmax/fr</code>，外层 <code>min</code> 只给出截断值，被违反的下界约束<strong>并没有恢复可行</strong>。工程实现必须先判可行区间非空，再处理无解/降额/保护。</li>
+<li>还需单独满足式 (18) 的 <code>1 &lt; Fn</code> 和模型适用域。</li>
+</ul>
+<blockquote>这一点在组会问答里被单独列为“式 (20) 外层 min 是不是已经保证了全部约束？”答案是否定的。写作时不要写“式 (20) 保证所有约束”。</blockquote>
+<hr>
+<h2 id="5-三阶段控制">5 三阶段控制</h2>
+<p>Fig.12/13/14（PDF p.7）给出控制结构：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">阶段</th>
+<th class="align-left">触发</th>
+<th class="align-left">行为</th>
+<th class="align-left">目的</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">1 预充</td>
+<td class="align-left"><code>Uo &lt; Uref1</code></td>
+<td class="align-left">固定 <code>fs1</code>，涓流充电到 <code>Uref1</code></td>
+<td class="align-left">避开零压启动，不让主充电段模型直接用于 <code>Uo≈0</code></td>
+</tr>
+<tr>
+<td class="align-left">2 AOC</td>
+<td class="align-left"><code>Uref1 ≤ Uo &lt; Uref</code></td>
+<td class="align-left">采样 <code>Uo</code> → <code>M</code> → 解 <code>Fnmin1</code>、<code>Fnmin2</code> → 式 (20) → 式 (11) 得 <code>cosθ</code> → 式 (13) 得 <code>Iref</code> → 电流 PI → PFM</td>
+<td class="align-left">每个电压点用满可行输出电流</td>
+</tr>
+<tr>
+<td class="align-left">3 恒压</td>
+<td class="align-left"><code>Uo ≥ Uref</code></td>
+<td class="align-left">Burst：停充；漏电跌到 <code>Uref2</code> 再以 <code>fs2</code> 工作若干周期</td>
+<td class="align-left">维持输出电压</td>
+</tr>
+</tbody></table></div>
+<p><strong>控制层次</strong>：</p>
+<ol>
+<li>模型算出边界频率 <code>Fnmin</code>；</li>
+<li>由 <code>Fnmin</code> 算 <code>Iref</code>；</li>
+<li><code>Iref</code> 进电流 PI，PI 输出实际频率指令；</li>
+<li>频率指令还要限幅、抗积分饱和、处理可行性。</li>
+</ol>
+<blockquote>“模型算出的边界频率”和“PI 最终执行的频率”是不同层次。论文没有把二者混为一谈；写作时也不要写成“模型直接给定开关频率”。</blockquote>
+<hr>
+<h2 id="6-实验-2174-w-单相样机">6 实验：2174 W 单相样机</h2>
+<h3 id="6-1-样机参数-pdf-p-10-11-table-iii">6.1 样机参数（PDF p.10–11，Table III）</h3>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">量</th>
+<th class="align-right">值</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">输入 <code>Uin</code></td>
+<td class="align-right">45 V</td>
+</tr>
+<tr>
+<td class="align-left">目标 <code>Uref</code></td>
+<td class="align-right">720 V</td>
+</tr>
+<tr>
+<td class="align-left">变比 <code>n</code></td>
+<td class="align-right">16</td>
+</tr>
+<tr>
+<td class="align-left">输出电容 <code>Co</code></td>
+<td class="align-right">8.13 mF</td>
+</tr>
+<tr>
+<td class="align-left">最大谐振电流 <code>Imax</code></td>
+<td class="align-right">105 A</td>
+</tr>
+<tr>
+<td class="align-left">谐振频率 <code>fr</code></td>
+<td class="align-right">50 kHz</td>
+</tr>
+<tr>
+<td class="align-left">漏感 <code>Lr</code></td>
+<td class="align-right">1.63 μH</td>
+</tr>
+<tr>
+<td class="align-left">谐振电容 <code>Cr</code></td>
+<td class="align-right">6.22 μF（设计值；文中也写 6 μF）</td>
+</tr>
+<tr>
+<td class="align-left">电容比 <code>k = Cp/Cr</code></td>
+<td class="align-right">0.213</td>
+</tr>
+<tr>
+<td class="align-left">AOC 频率范围</td>
+<td class="align-right">61–67 kHz</td>
+</tr>
+<tr>
+<td class="align-left">HCC–CP 频率范围</td>
+<td class="align-right">64–67 kHz</td>
+</tr>
+<tr>
+<td class="align-left">预充 <code>Uref1</code></td>
+<td class="align-right">40 V（约 0.05 Uref）</td>
+</tr>
+<tr>
+<td class="align-left">额定功率</td>
+<td class="align-right">2174 W（<code>Pref = 2174.4 W</code>）</td>
+</tr>
+<tr>
+<td class="align-left">控制器</td>
+<td class="align-right">TI TMS320F28379D</td>
+</tr>
+<tr>
+<td class="align-left">功率模块</td>
+<td class="align-right">CAS300M12BM2 半桥模块 ×2</td>
+</tr>
+</tbody></table></div>
+<h3 id="6-2-充电速度-pdf-p-11-12-fig-23">6.2 充电速度（PDF p.11–12，Fig.23）</h3>
+<p>相同 <code>Imax = 105 A</code>、相同 720 V 目标：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">策略</th>
+<th class="align-right">时间</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">HCC–CP</td>
+<td class="align-right">1.82 s</td>
+</tr>
+<tr>
+<td class="align-left">AOC</td>
+<td class="align-right">1.62 s</td>
+</tr>
+</tbody></table></div>
+<ul>
+<li>论文口径：<strong>充电速度提高 12.35%</strong> = <code>1.82/1.62 − 1</code>。</li>
+<li>另一口径：<strong>充电时间缩短 10.99%</strong> = <code>(1.82−1.62)/1.82</code>。</li>
+<li>两者都对，但<strong>不能混用</strong>。写作时建议写“速度提高 12.35%（时间由 1.82 s 降至 1.62 s）”。</li>
+</ul>
+<p>Fig.23(b) 显示两策略最大谐振电流限制相同；Fig.23(c)(d) 显示 AOC 的 <code>Io</code>、<code>Po</code> 全程更大。</p>
+<h3 id="6-3-热-pdf-p-12-fig-25">6.3 热（PDF p.12，Fig.25）</h3>
+<ul>
+<li>ANSYS Icepak 半桥模块热仿真；器件损耗由电路仿真提取。</li>
+<li>环境 20 °C；AOC 温升 <strong>42.3 °C</strong>，HCC–CP <strong>53 °C</strong>。</li>
+<li><strong>为放大差异，损耗和作用时间都乘了 4</strong>（<code>P1/P2/P4/P5/P6 = 104.1/135/139.7/144.1/147.9 W</code>；<code>t0/t1/t2/t3 = 4.346/6.465/6.48/7.28 s</code>）。</li>
+<li>因此：这是<strong>热仿真</strong>，不是实测温升；不能写成“实验测得 AOC 温升低 10.7 °C”。结论段的“10.7 °C”是 53 − 42.3 的取整。</li>
+</ul>
+<h3 id="6-4-zvs-pdf-p-13-fig-27">6.4 ZVS（PDF p.13，Fig.27）</h3>
+<ul>
+<li>作者逻辑：ZVS 在充电末期最难实现；若 720 V 末端能实现，则全程可实现。</li>
+<li>Fig.27 是 720 V 末端的实验波形。</li>
+<li>准确表述：<strong>末端实验波形 + 模型边界共同支持“全程 ZVS”的结论</strong>；不是每个中间电压都做了逐点实验。</li>
+<li>对三相项目：最不利换流事件不一定只在末端，不能预设“末端通过=全程通过”。</li>
+</ul>
+<hr>
+<h2 id="7-论文自己承认-隐含的边界">7 论文自己承认/隐含的边界</h2>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">边界</th>
+<th class="align-left">依据</th>
+<th class="align-left">对写作的含义</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">单相全桥</td>
+<td class="align-left">Fig.1、样机</td>
+<td class="align-left">不能直接迁移到三相 Δ/Y 的耦合与整流模态</td>
+</tr>
+<tr>
+<td class="align-left"><code>k = 0.213</code> 的拟合式</td>
+<td class="align-left">式 (11)(15)(19)</td>
+<td class="align-left">不是所有 LCC 的通式；换参数必须重推</td>
+</tr>
+<tr>
+<td class="align-left">准静态、CCM</td>
+<td class="align-left">§II 假设</td>
+<td class="align-left">零压启动、弱阻尼、模态切换要另做时域验证</td>
+</tr>
+<tr>
+<td class="align-left">ZVS 用 <code>Xin &gt; 0</code> 近似</td>
+<td class="align-left">式 (16)</td>
+<td class="align-left">不是实际死区电荷/Coss 的严格认证</td>
+</tr>
+<tr>
+<td class="align-left">热是仿真且损耗×4</td>
+<td class="align-left">§V-C</td>
+<td class="align-left">不能当实测温升或整机效率</td>
+</tr>
+<tr>
+<td class="align-left">ZVS 只展示末端波形</td>
+<td class="align-left">Fig.27</td>
+<td class="align-left">不能写“逐点实验覆盖全部电压”</td>
+</tr>
+<tr>
+<td class="align-left">速度快 ≠ 损耗低</td>
+<td class="align-left">§IV/§V</td>
+<td class="align-left">论文比较的是相同 <code>Imax</code> 下的速度；没有给出全程损耗最优证明</td>
+</tr>
+<tr>
+<td class="align-left">Burst 恒压</td>
+<td class="align-left">§III-D</td>
+<td class="align-left">与本项目“800 V 锁存、不自动重启”不同</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h2 id="8-与文献对比时的正确说法">8 与文献对比时的正确说法</h2>
+<h3 id="可以写">可以写</h3>
+<ul>
+<li>“Qin 等针对单相 LCC CCPS 提出 AOC，用 CRC-FHA 建立 <code>Io(M,Fn)</code>、<code>Im(M,Fn)</code>，以 <code>Imax</code>、<code>Xin&gt;0</code>、<code>fr&lt;fs&lt;fmax</code> 为约束，在线生成 <code>Iref</code>，经电流 PI 实施。”</li>
+<li>“在 2174 W 样机上，相同 <code>Imax=105 A</code>、相同 720 V 目标，HCC–CP 用 1.82 s、AOC 用 1.62 s，速度提高 12.35%。”</li>
+<li>“该文的热结果为 Icepak 仿真（损耗与作用时间×4），ZVS 证据为 720 V 末端实验波形与模型边界。”</li>
+<li>“AOC 的核心不是恒流/恒功率，而是逐电压点求满足全部约束的最大可行输出电流。”</li>
+</ul>
+<h3 id="不能写">不能写</h3>
+<ul>
+<li>“AOC 是本文首次提出/本文实现了 AOC。”——AOC 是 Qin 2023 的；本项目只做离线查表迁移。</li>
+<li>“AOC 保证全局最优/全程 ZVS。”——论文用的是近似边界和末端波形，不是全局证明。</li>
+<li>“AOC 使效率提高/温升降低 10.7 °C（实测）。”——热是仿真且放大 4 倍。</li>
+<li>“12.35% 可以直接用于三相。”——对象、参数、模型、时间尺度都不同。</li>
+<li>“CRC-FHA 在所有 LCC 参数下都准。”——<code>k=0.213</code> 拟合，适用范围有限。</li>
+</ul>
+<hr>
+<h2 id="9-与项目的接口">9 与项目的接口</h2>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">文献要素</th>
+<th class="align-left">项目里怎么用</th>
+<th class="align-left">不能怎么用</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">“逐电压点最大化可行 <code>Io</code>”的目标</td>
+<td class="align-left">作为 59 节点搜索的目标函数</td>
+<td class="align-left">不能说“因此本文是 AOC”</td>
+</tr>
+<tr>
+<td class="align-left"><code>Imax</code> 边界</td>
+<td class="align-left">换成三相相峰值 14 A 情景</td>
+<td class="align-left">不能把 105 A 直接折算成 14 A</td>
+</tr>
+<tr>
+<td class="align-left"><code>Xin &gt; 0</code> ZVS 边界</td>
+<td class="align-left">换成逐桥臂换流方向 + 电荷代理 + 残压诊断</td>
+<td class="align-left">不能把单相 <code>Xin</code> 公式套到三相</td>
+</tr>
+<tr>
+<td class="align-left">式 (20) 的 <code>Fnmin</code></td>
+<td class="align-left">项目不用该解析式；用离散 HOGA 搜索</td>
+<td class="align-left">不能把式 (20) 写成项目控制律</td>
+</tr>
+<tr>
+<td class="align-left">三阶段/Burst</td>
+<td class="align-left">项目只借“预充—主充电—停充”结构；停充是锁存</td>
+<td class="align-left">不能写“实现了 Burst 恒压”</td>
+</tr>
+<tr>
+<td class="align-left">1.82/1.62 s</td>
+<td class="align-left">只作为文献背景</td>
+<td class="align-left">不能与 2.153487 ms 比“快多少倍”</td>
+</tr>
+</tbody></table></div>
+<p>项目最终轨迹的细节见 <a href="03_project_AOC_final.html"><code>03_project_AOC_final.md</code></a>。</p>
+<hr>
+<h2 id="10-页码索引-便于回查-pdf">10 页码索引（便于回查 PDF）</h2>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">内容</th>
+<th class="align-left">PDF 页</th>
+<th class="align-left">期刊页</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">摘要、Fig.1/2、§I 开头</td>
+<td class="align-left">p.1</td>
+<td class="align-left">5675</td>
+</tr>
+<tr>
+<td class="align-left">贡献、CRC-FHA 开头</td>
+<td class="align-left">p.2</td>
+<td class="align-left">5676</td>
+</tr>
+<tr>
+<td class="align-left">等效模型、式 (2)</td>
+<td class="align-left">p.3</td>
+<td class="align-left">5677</td>
+</tr>
+<tr>
+<td class="align-left">式 (10)–(13)、Fig.10</td>
+<td class="align-left">p.4</td>
+<td class="align-left">5678</td>
+</tr>
+<tr>
+<td class="align-left">Table I、Fig.9</td>
+<td class="align-left">p.5</td>
+<td class="align-left">5679</td>
+</tr>
+<tr>
+<td class="align-left">Fig.11、§III-A/B、式 (14)–(17)</td>
+<td class="align-left">p.6</td>
+<td class="align-left">5680</td>
+</tr>
+<tr>
+<td class="align-left">Fig.12–14、式 (18)–(20)、§III-D</td>
+<td class="align-left">p.7</td>
+<td class="align-left">5681</td>
+</tr>
+<tr>
+<td class="align-left">Fig.15、§IV</td>
+<td class="align-left">p.8</td>
+<td class="align-left">5682</td>
+</tr>
+<tr>
+<td class="align-left">Table II、§IV-A</td>
+<td class="align-left">p.9</td>
+<td class="align-left">5683</td>
+</tr>
+<tr>
+<td class="align-left">样机、Table III 开头</td>
+<td class="align-left">p.10</td>
+<td class="align-left">5684</td>
+</tr>
+<tr>
+<td class="align-left">Table III、§V-B、Fig.21/22/23</td>
+<td class="align-left">p.11</td>
+<td class="align-left">5685</td>
+</tr>
+<tr>
+<td class="align-left">Fig.24/25、§V-C</td>
+<td class="align-left">p.12</td>
+<td class="align-left">5686</td>
+</tr>
+<tr>
+<td class="align-left">Fig.26/27、§V-D、§VI 结论</td>
+<td class="align-left">p.13</td>
+<td class="align-left">5687</td>
+</tr>
+<tr>
+<td class="align-left">参考文献</td>
+<td class="align-left">p.14–15</td>
+<td class="align-left">5688–5689</td>
+</tr>
+</tbody></table></div>
+<blockquote>页码以本地 PDF 为准；不同下载版本的封面页可能导致 ±1 页偏移，引用时优先用图号/式号。</blockquote>
+<hr>
+<p><em>本文件只读原论文与项目内既有笔记，未新增计算。最后更新：2026-10-25。</em></p>
+</article>
+</main>
+<footer class="footer">
+  <p>公开归档 · 代码 MIT · 原创文档 CC BY 4.0 · 原论文不随仓库分发 ·
+  <a href="https://github.com/sososoamazing/lcc-aoc-charging-strategy">GitHub</a> ·
+  <a href="https://sososoamazing.github.io/lcc-aoc-charging-strategy/">Pages</a></p>
+  <p>最后构建：2026-10-25。本页由 <code>tools/build_site.py</code> 从 Markdown 生成；如与源文件冲突，以源文件为准。</p>
+</footer>
+</body>
+</html>

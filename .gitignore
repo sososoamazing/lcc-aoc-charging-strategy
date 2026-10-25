@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+
+# MATLAB / Simulink caches (not part of this dossier)
+slprj/
+*.slxc
+*.autosave
+*.asv
+*.m~
+*.mdl~
+
+# Logs / local env
+*.log
+runtime/
+.env
+.venv/
+
+# Large binaries not distributed here
+*.slx
+*.mat
+*.pdf

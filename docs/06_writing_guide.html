@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>06 写作指南：把资料变成论文正文 · 三相 LCC 电容充电电源 AOC 策略资料包</title>
+<meta name="description" content="50 V → 800 V 三相 Δ/Y LCC 的 AOC 策略梳理：Qin 2023 文献精读、最终 59 节点离线 fs(Vo) 轨迹、20 点验证、模型层级与论文写作边界。">
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="alternate" type="text/markdown" href="../ONE_PAGE.md">
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$','$'],['\(','\)']], displayMath: [['$$','$$'],['\[','\]']] },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner">
+  <a class="brand" href="../index.html">LCC<span>·</span>AOC</a>
+  <nav class="nav">
+    <a href="../index.html">总览</a>
+    <a href="../docs/01_paper_AOC_digest.html">文献</a>
+    <a href="../docs/03_project_AOC_final.html">最终轨迹</a>
+    <a href="../docs/04_validation.html">验证</a>
+    <a href="../docs/05_claims_and_boundaries.html">边界</a>
+    <a href="../docs/06_writing_guide.html">写作</a>
+    <a href="../docs/07_sources.html">来源</a>
+    <a href="../data/aoc_59_nodes.csv">数据</a>
+    <a href="https://github.com/sososoamazing/lcc-aoc-charging-strategy">GitHub</a>
+  </nav>
+</div></header>
+
+<main class="layout">
+<aside class="toc"><h3>本页目录</h3><a class="lvl2" href="#1-先确定你写的是哪一块">1 先确定你写的是哪一块</a><a class="lvl2" href="#2-任务-a-文献综述段-800-1200-字">2 任务 A：文献综述段（800–1200 字）</a><a class="lvl3" href="#2-1-三段式骨架">2.1 三段式骨架</a><a class="lvl3" href="#2-2-必须引用的信息">2.2 必须引用的信息</a><a class="lvl3" href="#2-3-不能写">2.3 不能写</a><a class="lvl2" href="#3-任务-b-4-1-3-技术节-2500-3500-字">3 任务 B：§4.1.3 技术节（2500–3500 字）</a><a class="lvl3" href="#3-1-建议节标题">3.1 建议节标题</a><a class="lvl3" href="#3-2-七段骨架">3.2 七段骨架</a><a class="lvl3" href="#3-3-图表清单">3.3 图表清单</a><a class="lvl3" href="#3-4-公式清单">3.4 公式清单</a><a class="lvl3" href="#3-5-数值清单-最终版-only">3.5 数值清单（最终版 only）</a><a class="lvl2" href="#4-给-chatgpt-的提示词-可直接复制">4 给 ChatGPT 的提示词（可直接复制）</a><a class="lvl3" href="#4-1-先出提纲与数值清单">4.1 先出提纲与数值清单</a><a class="lvl3" href="#4-2-确认后写正文">4.2 确认后写正文</a><a class="lvl3" href="#4-3-如果-gpt-打不开链接">4.3 如果 GPT 打不开链接</a><a class="lvl2" href="#5-段落级-写-不写-对照">5 段落级“写/不写”对照</a><a class="lvl2" href="#6-可复用句式-claim-safe">6 可复用句式（claim-safe）</a><a class="lvl2" href="#7-与第六章的衔接方案">7 与第六章的衔接方案</a><a class="lvl3" href="#方案-a-推荐过渡-第四章写-59-节点最终轨迹-第六章保留-21-节点-m2-对照">方案 A（推荐过渡）：第四章写 59 节点最终轨迹，第六章保留 21 节点 M2 对照</a><a class="lvl3" href="#方案-b-最干净-重跑-59-节点-m2-全程">方案 B（最干净）：重跑 59 节点 M2 全程</a><a class="lvl3" href="#方案-c-不推荐-第四章也停留在-21-节点">方案 C（不推荐）：第四章也停留在 21 节点</a><a class="lvl2" href="#8-写作后自检-10-问">8 写作后自检（10 问）</a></aside>
+<article class="content">
+<h1 id="06-写作指南-把资料变成论文正文">06 写作指南：把资料变成论文正文</h1>
+<blockquote>这份文件是给 ChatGPT 网页端（或任何写作者）的“施工图”。它不替你写正文，而是规定：写哪一节、每段放什么、用哪些数、配哪些图表、哪些话绝对不能说。建议先让 GPT 输出提纲和数值清单，确认后再写正文。</blockquote>
+<hr>
+<h2 id="1-先确定你写的是哪一块">1 先确定你写的是哪一块</h2>
+<p>AOC 相关内容在论文里通常有两个落点，<strong>不要混成一节</strong>：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">落点</th>
+<th class="align-left">位置</th>
+<th class="align-left">任务</th>
+<th class="align-left">长度</th>
+<th class="align-left">证据</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left"><strong>A. 文献综述</strong></td>
+<td class="align-left">第一章 1.x / 第二章引言</td>
+<td class="align-left">说明 AOC 的研究现状、方法、结果、与三相的 gap</td>
+<td class="align-left">800–1200 字</td>
+<td class="align-left">Qin 2023（E1）</td>
+</tr>
+<tr>
+<td class="align-left"><strong>B. 本文方法</strong></td>
+<td class="align-left">第四章 4.1.3</td>
+<td class="align-left">说明本文如何借鉴 AOC 目标，构造 59 节点离线轨迹</td>
+<td class="align-left">2500–3500 字</td>
+<td class="align-left">项目 E2/E3/E4</td>
+</tr>
+</tbody></table></div>
+<p>如果导师只要“AOC 策略那一节”，通常指 <strong>B</strong>；如果是要“国内外研究现状里的 AOC”，指 <strong>A</strong>。两者可以共用文献段，但 B 必须额外写清“本文没有实现在线闭环”。</p>
+<hr>
+<h2 id="2-任务-a-文献综述段-800-1200-字">2 任务 A：文献综述段（800–1200 字）</h2>
+<h3 id="2-1-三段式骨架">2.1 三段式骨架</h3>
+<p><strong>A-1 问题段（200–250 字）</strong></p>
+<ul>
+<li>电容充电电源的充电时间占脉冲周期大部分，脉冲重复率受充电速度限制；</li>
+<li>CC 末期谐振电流应力最大、前段能力闲置；CP 低压段电流过大、后段能力闲置；HCC–CP 缓解但不贴住逐点可行上边界；</li>
+<li>因此需要“逐电压点最大化可行输出电流”的策略。</li>
+</ul>
+<p><strong>A-2 方法段（350–450 字）</strong></p>
+<ul>
+<li>Qin 等提出 AOC：CRC-FHA 建立 <code>Io(M,Fn)</code>、<code>Im(M,Fn)</code>；</li>
+<li>三条约束：<code>Imax</code>、<code>Xin&gt;0</code>（ZVS 近似）、<code>fr&lt;fs&lt;fmax</code>；</li>
+<li>三阶段：预充 → 在线算 <code>Fnmin</code>/<code>Iref</code> → 电流 PI → Burst；</li>
+<li>A 点：电流边界与 ZVS 边界交点，之后由 ZVS 边界主导。</li>
+</ul>
+<p><strong>A-3 结果与 gap 段（250–350 字）</strong></p>
+<ul>
+<li>2174 W 单相样机：1.82 s→1.62 s，速度 +12.35%；热仿真 42.3 vs 53 °C；末端 ZVS 波形；</li>
+<li>gap：单相、<code>k=0.213</code> 拟合、ZVS 用 <code>Xin&gt;0</code> 近似、没有三相耦合/整流事件/逐桥臂换流；</li>
+<li>本文不提出新 AOC，而是把“逐点最大化可行 <code>Io</code>”迁移到三相 HOGA 离散模型，构造离线 <code>fs(Vo)</code> 轨迹；在线闭环留待后续。</li>
+</ul>
+<h3 id="2-2-必须引用的信息">2.2 必须引用的信息</h3>
+<ul>
+<li>作者、题名、期刊、卷期页、DOI；</li>
+<li>1.82/1.62 s 与 12.35% 的算法；</li>
+<li>2174 W、45→720 V、8.13 mF、105 A、61–67 kHz（至少给 3–4 个，证明你读过）；</li>
+<li>明确“单相”与“实验”两个限定词。</li>
+</ul>
+<h3 id="2-3-不能写">2.3 不能写</h3>
+<ul>
+<li>“AOC 是最先进的/唯一的”——没有文献计量支撑；</li>
+<li>“AOC 保证全程 ZVS”——论文是近似边界 + 末端波形；</li>
+<li>“AOC 效率最高”——论文没做整机效率对比；</li>
+<li>“12.35% 可迁移到三相”。</li>
+</ul>
+<hr>
+<h2 id="3-任务-b-4-1-3-技术节-2500-3500-字">3 任务 B：§4.1.3 技术节（2500–3500 字）</h2>
+<h3 id="3-1-建议节标题">3.1 建议节标题</h3>
+<ul>
+<li>“基于 HOGA 输出特性的 AOC 型选频轨迹构造”</li>
+<li>或“三相 LCC 的逐点约束选频与 59 节点轨迹”</li>
+</ul>
+<p>不要用“三相 AOC 控制器设计”——你没有控制器闭环。</p>
+<h3 id="3-2-七段骨架">3.2 七段骨架</h3>
+<h4 id="b-1-定位与问题-300-400-字">B-1 定位与问题（300–400 字）</h4>
+<p><strong>目的</strong>：说清“为什么需要逐点选频”，以及“本文与原论文的区别”。</p>
+<p>必须写：</p>
+<ul>
+<li>三相 LCC 的 <code>Io</code> 不是 <code>fs</code> 的单调单值函数；整流导通对、<code>Cp</code> 钳位形态、三管/两管区间随 <code>Vo</code> 变；</li>
+<li>固定频率无法在每个电压点用满器件能力；</li>
+<li>原论文 AOC 是单相在线闭环；本文借其“逐点最大化可行 <code>Io</code>”目标，用 HOGA 离散周期解构造离线 <code>fs(Vo)</code> 表；</li>
+<li><strong>明确</strong>：本文不重新提出 AOC，不实现在线 <code>Iref</code> 求解/电流 PI。</li>
+</ul>
+<p>可写句式：</p>
+<blockquote>本文不试图复现文献[2]的在线电流闭环，而是将其“在约束下逐电压点最大化可行输出电流”的目标离散化到三相 HOGA 周期模型上，形成一条可离线复核的频率查表轨迹。</blockquote>
+<h4 id="b-2-优化模型-350-450-字">B-2 优化模型（350–450 字）</h4>
+<p><strong>目的</strong>：给出式 (1)(2)，定义可行集合。</p>
+<p>必须写：</p>
+<ul>
+<li>目标 <code>fs*(Vo) = arg max Io(Vo,fs)</code>；</li>
+<li>约束：HOGA 守卫/阶数/CCM、14 A 相峰值、换流代理 1.40019 A、210–340 kHz；</li>
+<li>解释 14 A 是研究情景，不是器件额定；</li>
+<li>解释 <code>Qreq=111.010 nC</code>、<code>teff=79.281831 ns</code>、<code>Icomm,min=1.4001947 A</code> 的来源；</li>
+<li>说明 <code>Io</code> 是三相共用整流桥平均电流，不是三个单相相加。</li>
+</ul>
+<p>建议公式：</p>
+<pre class="code"><code class="language-latex">f_s^{\star}(V_o)=\arg\max_{f_s\in\mathcal{F}(V_o)}
+\overline{I}_o(V_o,f_s)</code></pre>
+<pre class="code"><code class="language-latex">\mathcal{F}(V_o)=\left\{f_s:
+\begin{array}{l}
+\text{HOGA guards/order/CCM pass},\\
+\max_j|i_{o,j}|\le 14\,\mathrm{A},\\
+\min_\ell i_{\mathrm{comm},\ell}\ge 1.40019\,\mathrm{A},\\
+210\,\mathrm{kHz}\le f_s\le 340\,\mathrm{kHz}
+\end{array}\right\}</code></pre>
+<h4 id="b-3-可行域构造与离散搜索-500-650-字">B-3 可行域构造与离散搜索（500–650 字）</h4>
+<p><strong>目的</strong>：说明 59 节点怎么来，为什么不是 21 节点，为什么不是插值。</p>
+<p>必须写：</p>
+<ul>
+<li>复用 423 个通过守卫的 HOGA 点；扩域/模态恢复/局部加密；</li>
+<li>线性插值失败（14 A 越界、模态/求解失败）→ 改 20 个独立区间；</li>
+<li>20 段实施表 2.184381 ms（中间保守参考，不是最终）；</li>
+<li>254 V 尖峰与低频分支恢复；215–293 V 直线桥，41 点、1.95 V 步长；</li>
+<li>41 新点 + 18 保留 = 59 节点；加 0–20 V 的 300 kHz，共 61 断点；</li>
+<li>不跨区间插值，保留检查过的分支。</li>
+</ul>
+<p>可写句式：</p>
+<blockquote>由于不同电压区间的整流模态与 <code>Cp</code> 钳位形态不同，频率—电流关系并非同一分支上的单调函数；对相邻节点做线性插值会在部分区间造成 14 A 越界和模态丢失。因此本文放弃连续插值，改为在每个电压区间内保留一个经过三点核验的频率。</blockquote>
+<h4 id="b-4-最终轨迹-400-500-字">B-4 最终轨迹（400–500 字）</h4>
+<p><strong>目的</strong>：给出表的形态与关键数，解释非单调。</p>
+<p>必须写：</p>
+<ul>
+<li>59 节点、241.5905–299.2573 kHz；</li>
+<li>相峰值最大 13.99995 A（59 V）；换流代理最小 1.43999 A（683 V）；<code>Io</code> 1.85547→0.79996 A；</li>
+<li>形态：20–371 V 低频大电流；371 V 最低 241.59；410 V 跳到 272.27；高压升到 299.26；</li>
+<li>解释 371–410 V 跳变是模态/整流分支切换，不是测量错误；527–566 V 轻微回落也保留；</li>
+<li>不能画成单调光滑曲线。</li>
+</ul>
+<p>建议图：</p>
+<ul>
+<li><code>figures/03_revised_frequency_time.png</code>（<code>fs</code>–<code>t</code>，可见低谷/跳变）；</li>
+<li><code>figures/02_revised_current_time.png</code>（<code>Io</code>–<code>t</code>）；</li>
+<li>若需要 <code>fs</code>–<code>Vo</code>，用 <code>data/aoc_59_nodes.csv</code> 重绘（不要用时间轴图冒充电压轴图）。</li>
+</ul>
+<h4 id="b-5-控制实现-350-450-字">B-5 控制实现（350–450 字）</h4>
+<p><strong>目的</strong>：说清“怎么执行”，以及“执行层不是什么”。</p>
+<p>必须写：</p>
+<ul>
+<li><code>Vo →</code> 1-D 查表（Flat，61 断点）<code>→ fs</code>；</li>
+<li><code>θ = ∫2πfs dt</code>，三相共用积分器，频率切换时相位连续，保持 120°；</li>
+<li>到 800 V：<code>q[k+1]=q[k] OR (Vo[k]≥800)</code>，锁存封锁六路驱动；继续求解残余能量；不自动重启；</li>
+<li><strong>明确</strong>：开环前馈；没有 <code>Iref</code> 在线求解、没有电流 PI、没有 ZVS 闭环保护；14 A/换流代理只在离线筛选时用。</li>
+</ul>
+<p>可写句式：</p>
+<blockquote>该实现只把查表结果作为频率前馈指令，输出电压不参与电流环调节；因此本文的“AOC”是轨迹构造意义上的，而非文献[2]的闭环控制意义上的。</blockquote>
+<h4 id="b-6-验证-450-550-字">B-6 验证（450–550 字）</h4>
+<p><strong>目的</strong>：给出准静态、M1 动态、20 点精度，并标明层级。</p>
+<p>必须写：</p>
+<ul>
+<li>准静态 20→800 V = 2.089438 ms；加 65.456 μs 启动（M2 诊断值，仅作量级核对）≈ 2.154894 ms；</li>
+<li>M1 动态 <code>t800 = 2.153487 ms</code>（<code>Vf=0.6</code>、<code>Ron=1e-6</code>、无 Coss/死区）；与准静态差 0.065%；</li>
+<li>同模型旧 21 节点表 2.596206 ms，−17.05%；</li>
+<li>20 点 HOGA <code>Io</code> MAPE 0.00566%、RMS 0.00391%、峰值 0.0270%、NRMSE 0.0307%；</li>
+<li>17.4/79.8 V 非准静态，单列；</li>
+<li>HOGA 0.004% 接近参考数值平台（15 μA），不是物理精度。</li>
+</ul>
+<p>建议表：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">项目</th>
+<th class="align-right">值</th>
+<th class="align-left">模型层</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">准静态 20→800 V</td>
+<td class="align-right">2.089438 ms</td>
+<td class="align-left">准静态</td>
+</tr>
+<tr>
+<td class="align-left">M1 动态 <code>t800</code></td>
+<td class="align-right">2.153487 ms</td>
+<td class="align-left">M1</td>
+</tr>
+<tr>
+<td class="align-left">同模型旧表</td>
+<td class="align-right">2.596206 ms</td>
+<td class="align-left">M1</td>
+</tr>
+<tr>
+<td class="align-left">20 点 <code>Io</code> MAPE</td>
+<td class="align-right">0.00566%</td>
+<td class="align-left">E3</td>
+</tr>
+</tbody></table></div>
+<h4 id="b-7-与文献对比及边界-350-450-字">B-7 与文献对比及边界（350–450 字）</h4>
+<p><strong>目的</strong>：把“能比”和“不能比”分开，收束到研究问题。</p>
+<p>必须写：</p>
+<ul>
+<li>对象：单相 vs 三相 Δ/Y；参数：45→720 V/8.13 mF/105 A vs 50→800 V/3.125 μF/14 A；</li>
+<li>控制：在线 <code>Iref</code>+PI vs 离线 <code>fs(Vo)</code> 前馈；</li>
+<li>模型：CRC-FHA vs HOGA；</li>
+<li>证据：实验 vs 仿真；</li>
+<li>因此：12.35% 不能迁移；17.05% 只是同模型旧表对比；</li>
+<li>缺口：M2 下 59 节点表未跑全程；800 V 末端 7 频点无共同可行；无硬件、无损耗/温升；</li>
+<li>结论：本文给出的是“三相逐点选频的可行轨迹与模型验证”，不是“已证明优于 AOC/HCC–CP 的三相控制策略”。</li>
+</ul>
+<h3 id="3-3-图表清单">3.3 图表清单</h3>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">编号（示例）</th>
+<th class="align-left">内容</th>
+<th class="align-left">文件</th>
+<th class="align-left">图注必须写</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">图 4-x</td>
+<td class="align-left">最终 59 节点 <code>fs</code>–<code>Vo</code> 与 <code>Io</code>–<code>Vo</code></td>
+<td class="align-left">由 <code>data/aoc_59_nodes.csv</code> 重绘，或 <code>figures/03_revised_frequency_time.png</code> 改轴</td>
+<td class="align-left">“准静态重建；非开关级波形”</td>
+</tr>
+<tr>
+<td class="align-left">图 4-y</td>
+<td class="align-left">20→800 V 电压/电流轨迹</td>
+<td class="align-left"><code>figures/01_revised_voltage_time.png</code>、<code>02_revised_current_time.png</code></td>
+<td class="align-left">“准静态；t=0 对应 20 V”</td>
+</tr>
+<tr>
+<td class="align-left">图 4-z</td>
+<td class="align-left">20 点 <code>Io</code> 精度</td>
+<td class="align-left"><code>figures/fig_aoc2_Io.png</code></td>
+<td class="align-left">“冻结 <code>Vo</code> 的 Simulink 理想开关参考”</td>
+</tr>
+<tr>
+<td class="align-left">表 4-x</td>
+<td class="align-left">约束与阈值</td>
+<td class="align-left">本包 <code>docs/03</code> 表</td>
+<td class="align-left">“14 A 为研究情景；1.40019 A 为换流代理”</td>
+</tr>
+<tr>
+<td class="align-left">表 4-y</td>
+<td class="align-left">59 节点关键区段</td>
+<td class="align-left"><code>data/aoc_59_nodes.csv</code> 摘录</td>
+<td class="align-left">“完整 59 行见附录/数据文件”</td>
+</tr>
+<tr>
+<td class="align-left">表 4-z</td>
+<td class="align-left">与 Qin 2023 对比</td>
+<td class="align-left"><code>docs/03</code>/<code>ONE_PAGE</code></td>
+<td class="align-left">“对象/模型/证据不同，数值不可直接比较”</td>
+</tr>
+</tbody></table></div>
+<blockquote>论文正文不要放 59 行全表；放 8–10 行关键区段（20/215/254/293/371/410/527/683/800 V），全表放附录或数据附件。</blockquote>
+<h3 id="3-4-公式清单">3.4 公式清单</h3>
+<ul>
+<li>式 (1)：逐点优化；</li>
+<li>式 (2)：可行集合；</li>
+<li>式 (3)：换流代理 <code>Qreq/teff</code>；</li>
+<li>式 (4)：准静态时间积分；</li>
+<li>式 (5)：分段常值频率/相位积分；</li>
+<li>式 (6)：锁存逻辑（可选）。</li>
+</ul>
+<p>不要把文献式 (11)(15)(19)(20) 抄进本文方法节；它们只在文献综述/对比段出现，且要注明“该文参数下”。</p>
+<h3 id="3-5-数值清单-最终版-only">3.5 数值清单（最终版 only）</h3>
+<p><strong>可以进正文的最终数：</strong></p>
+<ul>
+<li>59 节点、20–800 V、241.5905–299.2573 kHz；</li>
+<li>0–20 V 300 kHz；61 断点；</li>
+<li>13.99995 A（最大相峰值）、1.43999 A（最小换流代理）、14 A、1.40019 A；</li>
+<li>1.85547→0.79996 A；</li>
+<li>2.089438 ms（准静态）、2.153487 ms（M1）、2.596206 ms（M1 旧表）、17.05%；</li>
+<li>20 点 MAPE：0.00566%/0.00391%/0.0270%/0.0307%；</li>
+<li>65.456 μs 启动（M2 诊断值）、2.154894 ms 合计（仅量级核对）。</li>
+</ul>
+<p><strong>只能放在“版本演进/历史对照”里的数：</strong></p>
+<ul>
+<li>21 节点 280–299 kHz、14/21 节点取 280 kHz；</li>
+<li>2.544446 ms（旧表准静态）、2.572428 ms（旧表 M2）、2.940227 ms（定频 M2）、2.687160 ms（400 V 候选）；</li>
+<li>12.509%、3.180%；</li>
+<li>20 段实施表 2.184381 ms、逐节点候选 2.098458 ms。</li>
+</ul>
+<p><strong>绝对不能进正文的数：</strong></p>
+<ul>
+<li>任何硬件温升/效率/ZVS 数字；</li>
+<li>把文献 42.3/53 °C 写成“本文”；</li>
+<li>把 12.35% 写成“本文三相收益”。</li>
+</ul>
+<hr>
+<h2 id="4-给-chatgpt-的提示词-可直接复制">4 给 ChatGPT 的提示词（可直接复制）</h2>
+<h3 id="4-1-先出提纲与数值清单">4.1 先出提纲与数值清单</h3>
+<pre class="code"><code class="language-text">你是电力电子方向的论文写作助手。请先只输出提纲和数值清单，不要写正文。
+
+资料（请逐条读取）：
+1. https://raw.githubusercontent.com/sososoamazing/lcc-aoc-charging-strategy/main/ONE_PAGE.md
+2. https://raw.githubusercontent.com/sososoamazing/lcc-aoc-charging-strategy/main/docs/06_writing_guide.md
+3. https://raw.githubusercontent.com/sososoamazing/lcc-aoc-charging-strategy/main/docs/03_project_AOC_final.md
+4. https://raw.githubusercontent.com/sososoamazing/lcc-aoc-charging-strategy/main/docs/05_claims_and_boundaries.md
+
+任务：为硕士学位论文撰写“基于 HOGA 输出特性的 AOC 型选频轨迹构造”一节，2500–3500 字。
+
+硬性要求：
+- 只使用资料中标注为“最终版”的 59 节点轨迹与 2.089438 ms / 2.153487 ms / 20 点 MAPE；
+- 必须区分“文献 AOC（在线电流闭环）”与“本文 AOC 型离线查表轨迹”；
+- 不得把 M2 的 2.572428 ms、12.509%、3.180% 与最终 59 节点数据混在同一张表；
+- 不得声称实现了电流 PI、全程 ZVS、硬件实验、全局最优、整机效率提升；
+- 14 A 必须写成“研究情景”，1.40019 A 必须写成“换流电荷代理”；
+- 每个数值后标注模型层级（准静态/M1/M2/文献实验）。
+
+输出格式：
+A. 三级提纲（节 → 小节 → 段落主旨）；
+B. 拟用数值清单（数值 | 含义 | 模型层 | 出处）；
+C. 拟用图表清单（编号 | 内容 | 数据来源 | 图注要点）；
+D. 你认为资料中仍缺、需要我补充的 3–5 项。</code></pre>
+<h3 id="4-2-确认后写正文">4.2 确认后写正文</h3>
+<pre class="code"><code class="language-text">提纲与数值清单已确认。现在按 B-1 至 B-7 写正文，要求：
+- 中文工科学术风格，段落连续，不用 bullet；
+- 公式用 LaTeX，编号 (4-x)；
+- 引用文献用 [2]（Qin 2023），不要编造其他参考文献；
+- 每段只做一件事：定位、模型、构造、轨迹、实现、验证、边界；
+- 所有“不能写”的表述一律不出现；
+- 写完后附一张“claim–evidence 自检表”，逐条列出你写的强主张及其证据层级。</code></pre>
+<h3 id="4-3-如果-gpt-打不开链接">4.3 如果 GPT 打不开链接</h3>
+<p>把 <code>ONE_PAGE.md</code>、<code>docs/03</code>、<code>docs/05</code>、<code>docs/06</code> 四个文件直接上传到对话，或粘贴正文。提示词中的 URL 换成“见附件”。</p>
+<hr>
+<h2 id="5-段落级-写-不写-对照">5 段落级“写/不写”对照</h2>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">段落</th>
+<th class="align-left">必须出现</th>
+<th class="align-left">不能出现</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">B-1</td>
+<td class="align-left">“借鉴”“离线”“不是在线闭环”</td>
+<td class="align-left">“提出 AOC”“实现 AOC”</td>
+</tr>
+<tr>
+<td class="align-left">B-2</td>
+<td class="align-left">14 A 研究情景、1.40019 A 代理</td>
+<td class="align-left">“器件额定”“ZVS 判据”</td>
+</tr>
+<tr>
+<td class="align-left">B-3</td>
+<td class="align-left">21→59 的原因、254 V 修订、41+18</td>
+<td class="align-left">“全局最优”“连续域扫描”</td>
+</tr>
+<tr>
+<td class="align-left">B-4</td>
+<td class="align-left">非单调、371 V 最低、410 V 跳变</td>
+<td class="align-left">“单调升频”“光滑曲线”</td>
+</tr>
+<tr>
+<td class="align-left">B-5</td>
+<td class="align-left">开环、Flat、锁存、不重启</td>
+<td class="align-left">“电流 PI”“Burst”“ZVS 保护”</td>
+</tr>
+<tr>
+<td class="align-left">B-6</td>
+<td class="align-left">准静态/M1/20 点分层</td>
+<td class="align-left">“硬件验证”“物理精度 0.004%”</td>
+</tr>
+<tr>
+<td class="align-left">B-7</td>
+<td class="align-left">对象/模型/证据差异、缺口</td>
+<td class="align-left">“优于 AOC”“12.35% 迁移”</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h2 id="6-可复用句式-claim-safe">6 可复用句式（claim-safe）</h2>
+<ol>
+<li>“文献[2]在单相 LCC 上提出 AOC，以谐振电流上限、ZVS 边界和频率上下限为约束，在线生成输出电流参考。”</li>
+<li>“本文不重复该在线闭环，而是把‘逐电压点最大化可行输出电流’的目标离散化到三相 HOGA 周期模型。”</li>
+<li>“在 14 A 相峰值研究情景、HOGA 物理守卫与阶数验收、CCM 分支、换流电荷代理和 210–340 kHz 窗口的共同约束下，逐点筛选得到 59 节点频率表。”</li>
+<li>“最终表的频率范围为 241.5905–299.2573 kHz；相峰值最大 13.99995 A，换流电流代理最小 1.43999 A。”</li>
+<li>“准静态电压域积分给出 20→800 V 的 2.089438 ms；在理想开关加二极管压降的时域模型中，首次到压时间为 2.153487 ms。”</li>
+<li>“同一时域模型下，旧 21 节点 280–299 kHz 表为 2.596206 ms，最终表相对缩短 17.05%。”</li>
+<li>“20 个冻结工作点的对比表明，HOGA-H49 的平均输出电流 MAPE 为 0.00566%，已接近冻结参考的数值平台。”</li>
+<li>“上述结果验证的是轨迹与模型在该组工况下的一致性，不构成器件换流、硬件 ZVS 或整机效率的证明。”</li>
+<li>“由于 59 节点表尚未在 100 ns 死区、非线性 Coss 与整流 Cj 的器件近似模型中完成全程仿真，本文不将其时间与文献实验或该模型下的旧表结果直接比较。”</li>
+<li>“因此，本文将三相 AOC 的可行域构造与闭环实现列为后续工作，而不是已完成的创新结论。”</li>
+</ol>
+<hr>
+<h2 id="7-与第六章的衔接方案">7 与第六章的衔接方案</h2>
+<h3 id="方案-a-推荐过渡-第四章写-59-节点最终轨迹-第六章保留-21-节点-m2-对照">方案 A（推荐过渡）：第四章写 59 节点最终轨迹，第六章保留 21 节点 M2 对照</h3>
+<ul>
+<li>第四章：59 节点、M1/准静态、20 点精度；</li>
+<li>第六章：明确写“21 节点表 + 器件近似模型”的 2.572428/2.940227/2.687160 ms、12.509%、3.180%；</li>
+<li>在第六章开头加一句：“本节使用 21 节点历史表，以便与已完成的全器件近似仿真对齐；59 节点最终表的同层仿真留待后续。”</li>
+<li>好处：不改旧结果，不混口径；坏处：两章轨迹不同，需要一句话解释。</li>
+</ul>
+<h3 id="方案-b-最干净-重跑-59-节点-m2-全程">方案 B（最干净）：重跑 59 节点 M2 全程</h3>
+<ul>
+<li>用最终 59 节点表在 M2 模型跑 0→800 V；</li>
+<li>得到同层的 <code>t800</code>、相峰值、残压失败数、直接耗散；</li>
+<li>替换第六章三策略表中的“原 AOC”行；</li>
+<li>风险：M2 下可能仍超 14 A/启动失败，结论会变；必须如实报告，不能为了好看调参。</li>
+</ul>
+<h3 id="方案-c-不推荐-第四章也停留在-21-节点">方案 C（不推荐）：第四章也停留在 21 节点</h3>
+<ul>
+<li>与“最终版”要求冲突；</li>
+<li>59 节点的工作只能放在“后续优化”一句话里，浪费已有验证。</li>
+</ul>
+<hr>
+<h2 id="8-写作后自检-10-问">8 写作后自检（10 问）</h2>
+<ol>
+<li>我有没有把“文献 AOC”与“本文轨迹”写成同一个东西？</li>
+<li>2.153487 和 2.572428 有没有出现在同一张表？</li>
+<li>17.05% 的分母/对象写清楚了吗？</li>
+<li>14 A 有没有写成器件额定？</li>
+<li>1.40019 A 有没有写成 ZVS 认证？</li>
+<li>59 节点表有没有写成“在线闭环”？</li>
+<li>频率非单调有没有解释？</li>
+<li>20 点精度有没有注明“冻结参考/数值平台”？</li>
+<li>有没有出现“首次/全局最优/效率提升/温升降低/全程 ZVS”？</li>
+<li>第六章旧数据有没有模型层标签？</li>
+</ol>
+<p>十问全过，再交给导师。</p>
+<hr>
+<p><em>本文件是写作施工图，不是正文。最后更新：2026-10-25。</em></p>
+</article>
+</main>
+<footer class="footer">
+  <p>公开归档 · 代码 MIT · 原创文档 CC BY 4.0 · 原论文不随仓库分发 ·
+  <a href="https://github.com/sososoamazing/lcc-aoc-charging-strategy">GitHub</a> ·
+  <a href="https://sososoamazing.github.io/lcc-aoc-charging-strategy/">Pages</a></p>
+  <p>最后构建：2026-10-25。本页由 <code>tools/build_site.py</code> 从 Markdown 生成；如与源文件冲突，以源文件为准。</p>
+</footer>
+</body>
+</html>

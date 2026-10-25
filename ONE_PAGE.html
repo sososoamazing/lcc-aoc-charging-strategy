@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>三相 LCC 电容充电电源 AOC 策略一页式总览（最终版） · 三相 LCC 电容充电电源 AOC 策略资料包</title>
+<meta name="description" content="50 V → 800 V 三相 Δ/Y LCC 的 AOC 策略梳理：Qin 2023 文献精读、最终 59 节点离线 fs(Vo) 轨迹、20 点验证、模型层级与论文写作边界。">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="alternate" type="text/markdown" href="ONE_PAGE.md">
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$','$'],['\(','\)']], displayMath: [['$$','$$'],['\[','\]']] },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner">
+  <a class="brand" href="index.html">LCC<span>·</span>AOC</a>
+  <nav class="nav">
+    <a href="index.html">总览</a>
+    <a href="docs/01_paper_AOC_digest.html">文献</a>
+    <a href="docs/03_project_AOC_final.html">最终轨迹</a>
+    <a href="docs/04_validation.html">验证</a>
+    <a href="docs/05_claims_and_boundaries.html">边界</a>
+    <a href="docs/06_writing_guide.html">写作</a>
+    <a href="docs/07_sources.html">来源</a>
+    <a href="data/aoc_59_nodes.csv">数据</a>
+    <a href="https://github.com/sososoamazing/lcc-aoc-charging-strategy">GitHub</a>
+  </nav>
+</div></header>
+
+<main class="layout">
+<aside class="toc"><h3>本页目录</h3><a class="lvl2" href="#0-一句话">0. 一句话</a><a class="lvl2" href="#1-两层对象-不要混">1. 两层对象（不要混）</a><a class="lvl2" href="#2-文献-aoc-问题-模型-策略-结果">2. 文献 AOC：问题、模型、策略、结果</a><a class="lvl3" href="#2-1-问题">2.1 问题</a><a class="lvl3" href="#2-2-crc-fha-为什么选-ir-而不是-it">2.2 CRC-FHA（为什么选 ir 而不是 iT）</a><a class="lvl3" href="#2-3-三条约束">2.3 三条约束</a><a class="lvl3" href="#2-4-三阶段控制">2.4 三阶段控制</a><a class="lvl3" href="#2-5-实验与证据">2.5 实验与证据</a><a class="lvl2" href="#3-项目最终-aoc-59-节点查表轨迹">3. 项目最终 AOC：59 节点查表轨迹</a><a class="lvl3" href="#3-1-优化问题">3.1 优化问题</a><a class="lvl3" href="#3-2-怎么得到-59-节点">3.2 怎么得到 59 节点</a><a class="lvl3" href="#3-3-最终表的关键数">3.3 最终表的关键数</a><a class="lvl3" href="#3-4-动态验证-理想开关-二极管压降">3.4 动态验证（理想开关 + 二极管压降）</a><a class="lvl3" href="#3-5-20-点模型精度">3.5 20 点模型精度</a><a class="lvl2" href="#4-模型层级-哪些数能放在同一张表">4. 模型层级：哪些数能放在同一张表</a><a class="lvl2" href="#5-可写-不可写-速查">5. 可写 / 不可写（速查）</a><a class="lvl3" href="#可以写-有证据">可以写（有证据）</a><a class="lvl3" href="#不能写-无证据-易误导">不能写（无证据/易误导）</a><a class="lvl2" href="#6-与论文草稿的衔接">6. 与论文草稿的衔接</a><a class="lvl2" href="#7-导航">7. 导航</a></aside>
+<article class="content">
+<h1 id="三相-lcc-电容充电电源-aoc-策略一页式总览-最终版">三相 LCC 电容充电电源 AOC 策略一页式总览（最终版）</h1>
+<blockquote>本页是给人和 LLM 共同读的总览。所有数值的出处、模型层级和禁用表述，以文末链接的详细文档为准。最终版定义：<strong>文献层 = Qin 等 2023（JESTPE 11(6): 5675–5689）</strong>；<strong>项目层 = 59 节点 <code>aoc_smooth254_59_nodes.csv</code>（2026-10-20 定稿，2026-10-24 完成 20 点验证）</strong>。</blockquote>
+<hr>
+<h2 id="0-一句话">0. 一句话</h2>
+<p>Qin 等 2023 提出 AOC：在谐振电流上限、ZVS 边界和频率上下限约束下，随输出电压实时求最大可行输出电流参考，使单相 LCC 在相同峰值电流下充得更快。本项目把“逐电压点求最大可行输出电流”的目标迁移到 50 V→800 V 三相 Δ/Y LCC，用 HOGA 离散网格生成 <strong>59 节点 <code>fs(Vo)</code> 查表轨迹</strong>；这是<strong>离线开环前馈</strong>，不是原论文的在线电流闭环，也没有硬件验证。</p>
+<hr>
+<h2 id="1-两层对象-不要混">1. 两层对象（不要混）</h2>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left"></th>
+<th class="align-left">文献层</th>
+<th class="align-left">项目层</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">对象</td>
+<td class="align-left">单相 LCC 全桥 CCPS</td>
+<td class="align-left">三相三桥臂 Δ/Y LCC</td>
+</tr>
+<tr>
+<td class="align-left">参数</td>
+<td class="align-left">45 V→720 V，8.13 mF，1:16，2174 W，61–67 kHz</td>
+<td class="align-left">50 V→800 V，3.125 μF（1 J），1:4，241.6–299.3 kHz</td>
+</tr>
+<tr>
+<td class="align-left">模型</td>
+<td class="align-left">CRC-FHA（连续谐振电流基波近似）</td>
+<td class="align-left">HOGA（V2.2 快照；H31/H63 搜索，H49 验证）</td>
+</tr>
+<tr>
+<td class="align-left">约束</td>
+<td class="align-left"><code>Im ≤ Imax</code>、<code>Xin &gt; 0</code>、<code>1 &lt; Fn &lt; fmax/fr</code></td>
+<td class="align-left">HOGA 守卫/阶数/CCM、相峰值 ≤14 A、换流电荷代理 ≥1.40019 A、210–340 kHz</td>
+</tr>
+<tr>
+<td class="align-left">控制</td>
+<td class="align-left">在线算 <code>Fnmin</code> → <code>Iref</code> → 电流 PI → PFM</td>
+<td class="align-left">离线逐点搜索 → 59 节点 <code>fs(Vo)</code> 表 → 开环前馈 + 连续相位 + 800 V 锁存</td>
+</tr>
+<tr>
+<td class="align-left">终端</td>
+<td class="align-left">Burst 恒压（跌到 <code>Uref2</code> 重启）</td>
+<td class="align-left">800 V 锁存封锁，继续求解残余能量，<strong>不自动重启</strong></td>
+</tr>
+<tr>
+<td class="align-left">证据</td>
+<td class="align-left">2174 W 样机实验 + 热仿真 + 末端 ZVS 波形</td>
+<td class="align-left">冻结 <code>Vo</code> 的 Simulink 理想开关参考 + 20 点 HOGA 验证；<strong>无硬件</strong></td>
+</tr>
+<tr>
+<td class="align-left">结论</td>
+<td class="align-left">相同 <code>Imax</code> 下 1.82 s→1.62 s（速度 +12.35%）</td>
+<td class="align-left">理想开关模型 2.596206→2.153487 ms（−17.05%，同模型同口径）</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h2 id="2-文献-aoc-问题-模型-策略-结果">2. 文献 AOC：问题、模型、策略、结果</h2>
+<h3 id="2-1-问题">2.1 问题</h3>
+<p>电容充电时 <code>Uo</code> 持续升高，整流导通角、谐振电流应力和 ZVS 余量都随工作点变化：</p>
+<ul>
+<li><strong>CC</strong>：平均输出电流恒定，但末期谐振电流应力最大 → 末期先碰 <code>Imax</code>，前段能力没用足；</li>
+<li><strong>CP</strong>：<code>Io ≈ P/Uo</code>，低压段电流很大 → 初期先碰器件限制，后段能力又闲置；</li>
+<li><strong>HCC–CP</strong>：先恒流后恒功率，缓解两端极端，但分段折线仍不一定贴住每个电压点的可行输出上边界。</li>
+</ul>
+<p>AOC 的问题因此是：<strong>给定同一 <code>Imax</code>、ZVS 和频率约束，怎样在每个 <code>Uo</code> 点取尽可能大的 <code>Io</code>？</strong> 对理想输出电容、准静态条件，<code>Io</code> 越大 <code>dUo/dt</code> 越大，充电时间越短。</p>
+<h3 id="2-2-crc-fha-为什么选-ir-而不是-it">2.2 CRC-FHA（为什么选 <code>ir</code> 而不是 <code>iT</code>）</h3>
+<p>传统 FHA 用变压器电流 <code>iT</code> 的基波；<code>iT</code> 在整流截止区间为零、谐波大，且常忽略 <code>uCp</code> 与 <code>iT</code> 的相位差。论文改用<strong>连续、近似正弦的谐振电流 <code>ir</code></strong>，保留 <code>uCp</code> 与 <code>ir</code> 的相位关系，建立 Fig.5 等效网络。核心关系（论文式 (2)(11)(12)(13)）：</p>
+<pre class="code"><code class="language-text">ir(t) = Im sin(ωt)
+M = Uo/(n Uin),  Fn = fs/fr,  fr = 1/(2π√(LrCr)),  k = Cp/Cr
+Io = Im (1 − cosθ)/(nπ)
+Im = 2ω Cp Uo / [n(1 + cosθ)]</code></pre>
+<p><code>θ</code> 是整流二极管半周期导通角；<code>Io</code> 同时取决于 <code>Im</code> 与 <code>θ</code>，所以“相同谐振峰值”不对应“固定输出电流”。论文用 <code>k = 0.213</code> 的拟合式 (11) 把 <code>cosθ</code> 写成 <code>M</code>、<code>Fn</code> 的函数，进而得到 <code>Io = f(M,Fn)</code>、<code>Im = g(M,Fn)</code>。<strong>式 (11)/(15)/(19) 是该样机参数下的近似，不是所有 LCC 的通式。</strong></p>
+<h3 id="2-3-三条约束">2.3 三条约束</h3>
+<ol>
+<li><strong>电流应力边界</strong>：由式 (13)(14) 得 <code>Im ≤ Imax</code>，代换后得到 <code>Fnmin1</code>（论文式 (15)，关于 <code>M</code>、<code>Fn</code> 的多项式不等式）。</li>
+<li><strong>ZVS 边界</strong>：输入电抗感性，<code>Xin &gt; 0</code>：</li>
+</ol>
+<pre class="code"><code class="language-text">Xin = ωLr − 1/(ωCr) + (θ − π − cosθ sinθ)/(πωCp) &gt; 0        (16)
+kπ(Fn² − 1) + 0.4434 cos3θ − 2.031 cosθ − 1.571 &gt; 0           (17)</code></pre>
+<p>   把式 (11) 的 <code>cosθ(M,Fn)</code> 代入 (17)，得 <code>Fnmin2</code>（式 (19) 的展开多项式）。</p>
+<ol>
+<li><strong>频率范围</strong>：<code>1 &lt; Fn &lt; fmax/fr</code>（式 (18)），即 <code>fr &lt; fs &lt; fmax</code>。</li>
+</ol>
+<p><strong>A 点</strong>是 <code>Imax</code> 边界与 ZVS 边界的交点：A 点前电流边界更紧，轨迹沿 <code>Imax</code>；A 点后继续沿 <code>Imax</code> 会破坏感性条件，改沿 ZVS 边界，<code>Im</code> 可低于 <code>Imax</code>。所以 AOC 曲线既不是恒流也不是恒功率。</p>
+<h3 id="2-4-三阶段控制">2.4 三阶段控制</h3>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">阶段</th>
+<th class="align-left">条件</th>
+<th class="align-left">行为</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">1 预充</td>
+<td class="align-left"><code>Uo &lt; Uref1</code>（40 V，约 0.05 Uref）</td>
+<td class="align-left">固定 <code>fs1</code> 涓流充电，避开零压启动</td>
+</tr>
+<tr>
+<td class="align-left">2 AOC</td>
+<td class="align-left"><code>Uref1 ≤ Uo &lt; Uref</code>（720 V）</td>
+<td class="align-left">采样 <code>Uo</code> → 算 <code>M</code> → 解 <code>Fnmin1</code>、<code>Fnmin2</code> → 式 (20) 取 <code>Fnmin</code> → 式 (11) 得 <code>cosθ</code> → 式 (13) 得 <code>Iref</code> → 电流 PI → PFM</td>
+</tr>
+<tr>
+<td class="align-left">3 恒压</td>
+<td class="align-left"><code>Uo ≥ Uref</code></td>
+<td class="align-left">Burst：停充，漏电跌到 <code>Uref2</code> 再以 <code>fs2</code> 工作若干周期</td>
+</tr>
+</tbody></table></div>
+<p>式 (20) 原文：</p>
+<pre class="code"><code class="language-text">Fnmin = min{ fmax/fr , max(Fnmin1, Fnmin2) }        (20)</code></pre>
+<p>内层 <code>max</code> 合并两个下界；外层 <code>min</code> 是上限截断。<strong>若所需下界已超过 <code>fmax/fr</code>，截断值仍违反原约束</strong>——工程实现必须先判可行区间非空，不能把截断值称为“最优可行解”。</p>
+<h3 id="2-5-实验与证据">2.5 实验与证据</h3>
+<ul>
+<li>2174 W 单相样机：<code>Uin = 45 V</code>、<code>Uref = 720 V</code>、<code>n = 16</code>、<code>Co = 8.13 mF</code>、<code>Imax = 105 A</code>、<code>fr = 50 kHz</code>、<code>Lr = 1.63 μH</code>、<code>Cr ≈ 6.22 μF</code>、<code>k = 0.213</code>；AOC 实际 <code>fs</code> 上限 67 kHz、下限 61 kHz（HCC–CP 下限 64 kHz）。</li>
+<li>相同 <code>Imax</code>、相同 720 V 目标：HCC–CP <strong>1.82 s</strong>，AOC <strong>1.62 s</strong>。论文写“充电速度提高 12.35%”，即 <code>1.82/1.62 − 1 = 12.3457%</code>；若按时间缩短口径则是 <code>(1.82−1.62)/1.82 = 10.99%</code>。<strong>两个口径不能混。</strong></li>
+<li>热：ANSYS Icepak 半桥模块热仿真，环境 20 °C，AOC 温升 42.3 °C、HCC–CP 53 °C；为放大差异，<strong>损耗和作用时间都乘了 4</strong>。这是热仿真，不是实测温升。</li>
+<li>ZVS：Fig.27 给出 720 V 末端波形；作者以“末端最难 ZVS”的模型判断 + 该波形支持“全程 ZVS”。<strong>不是每个中间电压都做了逐点实验。</strong></li>
+<li>结论段写“12%”“10.7 °C”，是取整口径；引用时用 §V-B 的 12.35% 并注明算法。</li>
+</ul>
+<hr>
+<h2 id="3-项目最终-aoc-59-节点查表轨迹">3. 项目最终 AOC：59 节点查表轨迹</h2>
+<h3 id="3-1-优化问题">3.1 优化问题</h3>
+<p>在固定主电路、固定 14 A 研究情景下，逐电压点求最大平均整流电流：</p>
+<pre class="code"><code class="language-text">fs*(Vo) = arg max  Io(Vo, fs)
+          fs ∈ F(Vo)
+
+F(Vo) = { fs : HOGA 物理守卫/阶数/CCM 通过,
+               max_j |i_j| ≤ 14 A,
+               min_ℓ i_comm,ℓ ≥ 1.40019 A,
+               210 kHz ≤ fs ≤ 340 kHz }</code></pre>
+<ul>
+<li><code>Io</code> 是三相共用的平均整流输出电流；不是三个单相电流相加。</li>
+<li><code>i_comm</code> 是 100 ns 命令死区 + RC 门极近似对应的有效换流窗口内、按方向取符号的相电流；1.40019 A 由半桥 <code>Qreq ≈ 111.010 nC</code> 与有效窗口 79.281831 ns 得到，是<strong>必要能力代理</strong>，不是 ZVS 认证。</li>
+<li>HOGA 主方程仍是<strong>零物理死区、0.6 V 整流简化基准</strong>；Coss/Cj 动态不在稳态方程内。</li>
+</ul>
+<h3 id="3-2-怎么得到-59-节点">3.2 怎么得到 59 节点</h3>
+<ol>
+<li>复用既有 423 个通过守卫的 HOGA 点；扩域 377 条、模态恢复 88 条、局部频率加密 261 条（含失败与不同验收层级，不能相加称“全部有效独立点”）。</li>
+<li>先做线性频率插值检查，发现轻微 14 A 越界和模态/求解失败；改为 <strong>20 个独立电压区间</strong>（中间实施表，见 <code>docs/03</code> 版本表），每区间取一个固定频率，对两端 + 中点做三点核验；不跨区间线性插值，以保留检查过的分支。</li>
+<li>逐节点候选在 254 V 出现 251.064 kHz 的向上尖峰；用已验收 293 V 解作初值，恢复被遗漏的低频分支，得到 254 V / 244.8 kHz 的可行解。为避免尖峰，215–293 V 改用<strong>直线频率桥</strong>：</li>
+</ol>
+<pre class="code"><code class="language-text">fs(Vo) = 244614.9 + (243932.0 − 244614.9)·(Vo − 215)/78   [Hz]</code></pre>
+<p>   在该段每 1.95 V 检查一次，共 41 点，全部通过 H31/H63、代数闭合、物理守卫、CCM、相峰值 ≤14 A、换流代理筛选。</p>
+<ol>
+<li>41 个新局部点 + 18 个保留原节点 = <strong>59 节点</strong>；加 0–20 V 的 300 kHz 启动段，共 61 个查表断点。</li>
+</ol>
+<h3 id="3-3-最终表的关键数">3.3 最终表的关键数</h3>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">量</th>
+<th class="align-right">值</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">节点数</td>
+<td class="align-right">59（20–800 V）</td>
+</tr>
+<tr>
+<td class="align-left">频率范围</td>
+<td class="align-right"><strong>241.5905–299.2573 kHz</strong></td>
+</tr>
+<tr>
+<td class="align-left">0–20 V 启动</td>
+<td class="align-right">300 kHz</td>
+</tr>
+<tr>
+<td class="align-left">相峰值最大</td>
+<td class="align-right"><strong>13.99995 A</strong>（59 V 节点；距 14 A 仅 0.00005 A，属贴线）</td>
+</tr>
+<tr>
+<td class="align-left">换流代理最小</td>
+<td class="align-right"><strong>1.43999 A</strong>（683 V 节点；阈值 1.40019 A，余量约 2.8%）</td>
+</tr>
+<tr>
+<td class="align-left"><code>Io</code> 范围</td>
+<td class="align-right">1.85547 A（20 V）→ 0.79996 A（800 V）</td>
+</tr>
+<tr>
+<td class="align-left">准静态 20→800 V</td>
+<td class="align-right"><strong>2.089438 ms</strong></td>
+</tr>
+<tr>
+<td class="align-left">轨迹形状</td>
+<td class="align-right">20–215 V 约 243.6–244.6 kHz；215–371 V 由 244.61 降至 241.59（371 V 为全表最低）；410 V 跳至 272.27；之后升到 299.26 kHz</td>
+</tr>
+</tbody></table></div>
+<blockquote>轨迹<strong>不是单调调频</strong>：低压段用低频率换大电流，371 V 附近取全表最低频，410 V 因模态/换流分支切换跳回 272 kHz，再随电压升频。论文里必须解释这个“非单调、分段”的形态，不能画成一条光滑单调曲线。</blockquote>
+<p><img src="figures/03_revised_frequency_time.png" alt="最终 59 节点轨迹的开关频率（准静态重建）" loading="lazy"></p>
+<blockquote>图：<code>fs</code>–时间（t=0 对应 20 V），准静态重建，2.089 ms；不是开关级动态波形。371 V 处 241.59 kHz 为全表最低，410 V 跳至 272.27 kHz。</blockquote>
+<h3 id="3-4-动态验证-理想开关-二极管压降">3.4 动态验证（理想开关 + 二极管压降）</h3>
+<ul>
+<li>模型：<code>AOC_charge.slx</code>，<code>Vo → fs</code> 1-D 查表（Flat），三相 120° 连续相位，100 ns 采样锁存 <code>q[k+1] = q[k] OR (Vo[k] ≥ 800)</code>；ode15s，RelTol 2e-7、AbsTol 2e-9、MaxStep <code>1/(200·299257)</code>，Stop 3.5 ms。</li>
+<li>器件：<code>Ron = 1e-6 Ω</code>、<code>Vf = 0.6 V</code>、<code>Goff = 1e-11</code>、<code>td = 0</code>、<code>Coss = 0</code>（<strong>没有</strong> Coss/Cj、没有物理死区）。</li>
+<li>结果：<code>t800 = 2.153487 ms</code>；3.5 ms 末值 800.112 V；同模型旧 21 节点 280–299 kHz 表为 2.596206 ms，缩短 <strong>17.05%</strong>；完全理想器件（<code>Vf=0</code>、<code>Ron=eps</code>）为 2.151012 ms。</li>
+<li>准静态交叉核对：2.089438 ms（20→800 V）+ 65.456 μs（0→20 V 共同启动，借用 M2 的诊断值）= 2.154894 ms，与 2.153487 ms 差约 0.065%，仅作量级自洽检查（启动时间是 M2 口径，不是 M1 的严格同层值）。</li>
+</ul>
+<h3 id="3-5-20-点模型精度">3.5 20 点模型精度</h3>
+<p>在 <code>[0, t800]</code> 二十等分取中点，冻结 <code>Vo</code> 跑 24 周期 Simulink 理想开关参考，再用 HOGA-H49 / EDF / FHA 求解：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">指标 MAPE</th>
+<th class="align-right">HOGA-H49</th>
+<th class="align-right">EDF</th>
+<th class="align-right">FHA</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">三相平均 RMS</td>
+<td class="align-right"><strong>0.00391%</strong></td>
+<td class="align-right">0.391%</td>
+<td class="align-right">13.027%</td>
+</tr>
+<tr>
+<td class="align-left">平均输出电流 <code>Io</code></td>
+<td class="align-right"><strong>0.00566%</strong></td>
+<td class="align-right">0.349%</td>
+<td class="align-right">10.921%</td>
+</tr>
+<tr>
+<td class="align-left">三相峰值</td>
+<td class="align-right"><strong>0.0270%</strong></td>
+<td class="align-right">1.573%</td>
+<td class="align-right">13.784%</td>
+</tr>
+<tr>
+<td class="align-left">波形 NRMSE</td>
+<td class="align-right"><strong>0.0307%</strong></td>
+<td class="align-right">2.138%</td>
+<td class="align-right">23.851%</td>
+</tr>
+</tbody></table></div>
+<p><img src="figures/fig_aoc2_Io.png" alt="20 点平均输出电流对比" loading="lazy"></p>
+<blockquote>图：20 个冻结点上 HOGA-H49 / EDF / FHA 与 Simulink 参考的平均输出电流；参考为冻结 <code>Vo</code> 的理想开关模型，不是器件近似模型或硬件。</blockquote>
+<ul>
+<li>20/20 有效；HOGA 最大单点 <code>Io</code> 误差 0.0164%（673.7 V）。</li>
+<li>379.4 V / 241.59 kHz 是全表最低频、相峰值接近 14 A 的点：EDF <code>Io</code> 误差 1.171%、FHA 25.37%，HOGA 0.0098%。</li>
+<li>17.4 V（每周期 7% 电压变化）与 79.8 V（3.02%）不满足准静态，应单列“瞬态-冻结对照”，不能计入准静态精度统计。</li>
+</ul>
+<hr>
+<h2 id="4-模型层级-哪些数能放在同一张表">4. 模型层级：哪些数能放在同一张表</h2>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">层</th>
+<th class="align-left">模型</th>
+<th class="align-left">关键结果</th>
+<th class="align-left">能写什么</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">M0</td>
+<td class="align-left">理想开关（<code>Ron=Vf=0</code>，无死区）</td>
+<td class="align-left">59 节点 <code>t800 = 2.151012 ms</code></td>
+<td class="align-left">控制/轨迹层面的理想上限</td>
+</tr>
+<tr>
+<td class="align-left">M1</td>
+<td class="align-left">理想开关 + <code>Vf=0.6 V</code>、<code>Ron=1e-6</code></td>
+<td class="align-left">59 节点 <code>t800 = 2.153487 ms</code>；旧 21 节点 2.596206 ms</td>
+<td class="align-left">同模型、同口径的轨迹对比</td>
+</tr>
+<tr>
+<td class="align-left">M2</td>
+<td class="align-left">器件近似（100 ns 命令死区、MOS Coss、整流 Cj、RC 门极）</td>
+<td class="align-left">旧 21 节点 AOC 2.572428 ms；定频 300 kHz 2.940227 ms；400 V 候选 2.687160 ms；三者相峰值 14.28–14.31 A，启动各 4 次残压失败，主段 0</td>
+<td class="align-left">器件约束下的可行性诊断；<strong>不是最终 59 节点表的结果</strong></td>
+</tr>
+<tr>
+<td class="align-left">M3</td>
+<td class="align-left">硬件</td>
+<td class="align-left">无</td>
+<td class="align-left">不能写</td>
+</tr>
+</tbody></table></div>
+<p><strong>M2 的 800 V 末端</strong>：7 个离散频点（280/285/290/295/297/299/300 kHz）中，280–290 kHz 满足 14 A 但各有 60/60 残压失败；295–300 kHz 残压通过但相峰值 14.17–14.31 A 超限。<strong>没有同时满足两项的离散点</strong>；290–295 kHz 未连续精查，不能外推为“纯 PFM 全频域无解”。</p>
+<p><strong>关键缺口</strong>：最终 59 节点表<strong>只在 M0/M1 跑过全程</strong>；M2 下没有它的全程结果。论文若把 §4.1.3 改成 59 节点，第六章（2026-10-19 稿）的 2.572428 ms / 12.509% / 3.180% 仍是 21 节点 + M2 的口径，<strong>必须重跑或明确标注</strong>，不能与 2.153487 ms 并列成一张“策略对比表”。</p>
+<hr>
+<h2 id="5-可写-不可写-速查">5. 可写 / 不可写（速查）</h2>
+<h3 id="可以写-有证据">可以写（有证据）</h3>
+<ul>
+<li>“Qin 等提出 AOC，在 <code>Imax</code>、ZVS、频率约束下实时生成输出电流参考；单相 2174 W 样机在相同 <code>Imax</code> 下把 720 V 充电时间从 1.82 s 降到 1.62 s（速度提高 12.35%）。”</li>
+<li>“本文借鉴 AOC 的‘逐电压点最大化可行输出电流’目标，在 50 V→800 V 三相 Δ/Y LCC 上构造离线 <code>fs(Vo)</code> 查表轨迹。”</li>
+<li>“最终 59 节点表的频率范围 241.5905–299.2573 kHz，准静态 20→800 V 为 2.089438 ms；理想开关+二极管压降模型 <code>t800 = 2.153487 ms</code>，同模型旧 21 节点表为 2.596206 ms。”</li>
+<li>“20 个冻结工作点上，HOGA-H49 的 <code>Io</code> MAPE 为 0.00566%，最大单点 0.0164%。”</li>
+<li>“14 A 与 1.40019 A 是研究情景/代理阈值，不是器件额定或 ZVS 认证。”</li>
+</ul>
+<h3 id="不能写-无证据-易误导">不能写（无证据/易误导）</h3>
+<ul>
+<li>“本文实现了 AOC 策略/在线电流闭环。”——只做了开环查表。</li>
+<li>“三相 AOC 是本文首次提出。”——AOC 是 Qin 2023 的；三相迁移本身不构成已证创新。</li>
+<li>“14 A 约束满足/器件安全。”——13.99995 A 是贴线；M2 下旧轨迹全超；14 A 本身是情景。</li>
+<li>“全程 ZVS。”——只有残压代理和局部诊断，没有硬件。</li>
+<li>“充电时间缩短 17.05% 是相对 HCC–CP/文献的收益。”——17.05% 是<strong>同模型、同口径</strong>相对旧 21 节点表；不能跨模型、跨对象。</li>
+<li>“效率提升 3.18% / 温升降低 10.7 °C。”——3.180% 是 M2 下直接器件耗散的相对差（0.3351 mJ），不是整机效率；10.7 °C 是文献热仿真（且损耗×4）。</li>
+<li>“全局最优/连续域无解。”——离散 HOGA 网格 + 局部加密，未做连续全域证明。</li>
+<li>“12.35% 可直接迁移到三相。”——对象、参数、模型都不同。</li>
+</ul>
+<hr>
+<h2 id="6-与论文草稿的衔接">6. 与论文草稿的衔接</h2>
+<p>2026-10-19 合排稿 §4.1.3 目前写的是 <strong>21 节点</strong>表（527 V→281 kHz、566 V→280 kHz、800 V→299 kHz），并明确“不包含文献[1]的完整在线电流参考求解和电流 PI 闭环”。若按最终版改写：</p>
+<div class="table-wrap"><table>
+<thead><tr>
+<th class="align-left">位置</th>
+<th class="align-left">现在</th>
+<th class="align-left">最终版应改为</th>
+</tr></thead><tbody>
+<tr>
+<td class="align-left">§4.1.3 节点数</td>
+<td class="align-left">21</td>
+<td class="align-left"><strong>59</strong>（20–800 V），0–20 V 仍 300 kHz</td>
+</tr>
+<tr>
+<td class="align-left">频率范围</td>
+<td class="align-left">280–299 kHz</td>
+<td class="align-left"><strong>241.59–299.26 kHz</strong></td>
+</tr>
+<tr>
+<td class="align-left">轨迹形态</td>
+<td class="align-left">高压段升频</td>
+<td class="align-left">低压段低频大电流 + 371 V 最低点 + 410 V 分支跳变 + 高压升频</td>
+</tr>
+<tr>
+<td class="align-left">充电时间</td>
+<td class="align-left">2.572428 ms（M2，21 节点）</td>
+<td class="align-left">准静态 2.089438 ms；M1 动态 2.153487 ms（分列）</td>
+</tr>
+<tr>
+<td class="align-left">约束</td>
+<td class="align-left">14 A 情景 + 残压诊断</td>
+<td class="align-left">14 A + 换流代理 1.40019 A + HOGA 守卫/阶数/CCM + 210–340 kHz</td>
+</tr>
+<tr>
+<td class="align-left">第六章</td>
+<td class="align-left">2.572428 / 12.509% / 3.180%</td>
+<td class="align-left">要么重跑 59 节点 M2，要么保留为“21 节点历史对照”并加模型标签</td>
+</tr>
+</tbody></table></div>
+<p>段落骨架、图表建议和 GPT 提示词见 <a href="docs/06_writing_guide.html"><code>docs/06_writing_guide.md</code></a>。</p>
+<hr>
+<h2 id="7-导航">7. 导航</h2>
+<ul>
+<li>文献精读：<a href="docs/01_paper_AOC_digest.html"><code>docs/01_paper_AOC_digest.md</code></a></li>
+<li>公式与符号：<a href="docs/02_equations.html"><code>docs/02_equations.md</code></a></li>
+<li>最终轨迹：<a href="docs/03_project_AOC_final.html"><code>docs/03_project_AOC_final.md</code></a></li>
+<li>验证与证据：<a href="docs/04_validation.html"><code>docs/04_validation.md</code></a></li>
+<li>可写/不可写：<a href="docs/05_claims_and_boundaries.html"><code>docs/05_claims_and_boundaries.md</code></a></li>
+<li>写作指南：<a href="docs/06_writing_guide.html"><code>docs/06_writing_guide.md</code></a></li>
+<li>来源索引：<a href="docs/07_sources.html"><code>docs/07_sources.md</code></a></li>
+</ul>
+<hr>
+<p><em>本页由既有论文、报告、CSV/JSON 整理，未新增 MATLAB/Simulink/Maxwell 求解或实验。最后整理：2026-10-25。</em></p>
+</article>
+</main>
+<footer class="footer">
+  <p>公开归档 · 代码 MIT · 原创文档 CC BY 4.0 · 原论文不随仓库分发 ·
+  <a href="https://github.com/sososoamazing/lcc-aoc-charging-strategy">GitHub</a> ·
+  <a href="https://sososoamazing.github.io/lcc-aoc-charging-strategy/">Pages</a></p>
+  <p>最后构建：2026-10-25。本页由 <code>tools/build_site.py</code> 从 Markdown 生成；如与源文件冲突，以源文件为准。</p>
+</footer>
+</body>
+</html>

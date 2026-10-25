@@ -1,0 +1,50 @@
+# 三相 LCC 电容充电电源 AOC 策略资料包（最终版）
+
+> 50 V → 800 V 三相 Δ/Y LCC 谐振电容充电电源的 AOC（adaptive optimization charging）策略梳理。两层内容：Qin 等 2023 IEEE JESTPE 论文的 AOC 方法；本项目 2026-10-20 定稿、2026-10-24 验证的 59 节点离线 `fs(Vo)` 查表轨迹。含公式、关键数、模型层级、可写/不可写边界与论文写作骨架。无硬件实验；原论文 PDF 与论文原图不随仓库分发。
+
+Canonical site: https://sososoamazing.github.io/lcc-aoc-charging-strategy/
+Repository: https://github.com/sososoamazing/lcc-aoc-charging-strategy
+
+## Start here
+
+- [ONE_PAGE.md](https://raw.githubusercontent.com/sososoamazing/lcc-aoc-charging-strategy/main/ONE_PAGE.md): 一页式总览；给 LLM 的最佳单 URL。
+- [README.md](https://github.com/sososoamazing/lcc-aoc-charging-strategy/blob/main/README.md): 仓库入口、30 秒结论、GPT 使用说明。
+- [docs/00_overview.md](https://raw.githubusercontent.com/sososoamazing/lcc-aoc-charging-strategy/main/docs/00_overview.md): 范围、版本政策、时间线。
+- [docs/05_claims_and_boundaries.md](https://raw.githubusercontent.com/sososoamazing/lcc-aoc-charging-strategy/main/docs/05_claims_and_boundaries.md): claim–evidence 对照、禁用表述。
+
+## Literature (Qin 2023)
+
+- [docs/01_paper_AOC_digest.md](https://raw.githubusercontent.com/sososoamazing/lcc-aoc-charging-strategy/main/docs/01_paper_AOC_digest.md): 题录、研究问题、CRC-FHA、三条约束、三阶段控制、2174 W 实验、边界。
+- [docs/02_equations.md](https://raw.githubusercontent.com/sososoamazing/lcc-aoc-charging-strategy/main/docs/02_equations.md): 式 (2)(11)–(20) 的转写、符号表、适用域、不可移植项。
+
+## Project final AOC
+
+- [docs/03_project_AOC_final.md](https://raw.githubusercontent.com/sososoamazing/lcc-aoc-charging-strategy/main/docs/03_project_AOC_final.md): 59 节点轨迹的优化模型、构造、形态、控制实现、结果、缺口。
+- [docs/04_validation.md](https://raw.githubusercontent.com/sososoamazing/lcc-aoc-charging-strategy/main/docs/04_validation.md): M0/M1/M2 模型层级、20 点验证、800 V 末端、能否同表。
+- [data/aoc_59_nodes.csv](https://raw.githubusercontent.com/sososoamazing/lcc-aoc-charging-strategy/main/data/aoc_59_nodes.csv): 最终 59 节点表。
+- [data/model_layer_metrics.csv](https://raw.githubusercontent.com/sososoamazing/lcc-aoc-charging-strategy/main/data/model_layer_metrics.csv): 各模型层关键数。
+
+## Writing
+
+- [docs/06_writing_guide.md](https://raw.githubusercontent.com/sososoamazing/lcc-aoc-charging-strategy/main/docs/06_writing_guide.md): 绪论段/§4.1.3 的段落骨架、图表建议、GPT 提示词、自检表。
+- [docs/07_sources.md](https://raw.githubusercontent.com/sososoamazing/lcc-aoc-charging-strategy/main/docs/07_sources.md): 来源、哈希、版本关系、未随包文件。
+
+## Key numbers (final version only)
+
+- Final table: 59 nodes, 20–800 V, 241.5905–299.2573 kHz, 0–20 V at 300 kHz.
+- Phase peak max 13.99995 A; commutation-current proxy min 1.43999 A (threshold 1.40019 A); Io 1.85547→0.79996 A.
+- Quasi-static 20→800 V: 2.089438 ms. M1 dynamic t800: 2.153487 ms. Same-model old 21-node table: 2.596206 ms (−17.05%).
+- 20-point accuracy: HOGA-H49 Io MAPE 0.00566%, RMS 0.00391%, peak 0.0270%, NRMSE 0.0307%.
+- M2 (100 ns dead time, Coss, Cj) exists only for the old 21-node table: 2.572428 ms, 14.279921 A, 4 startup residual failures. Do not mix with M1.
+
+## For ChatGPT / web agents
+
+Use `ONE_PAGE.md` plus `docs/06_writing_guide.md` first. Ask for an outline and a number list before prose. Enforce: distinguish literature AOC (online current loop) from this project's offline lookup trajectory; do not claim current PI, hardware ZVS, global optimum, efficiency gain, or a three-phase speedup percentage. Cite Qin 2023 with DOI 10.1109/JESTPE.2023.3301738.
+
+## Citation
+
+```text
+LCC AOC Strategy Dossier (2026). Three-phase LCC capacitor charger:
+AOC literature digest and final 59-node trajectory.
+https://github.com/sososoamazing/lcc-aoc-charging-strategy
+```
